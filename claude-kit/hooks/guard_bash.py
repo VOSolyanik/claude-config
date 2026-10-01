@@ -3,11 +3,14 @@
 deny  -> Claude sees the reason and adapts; ask -> user confirms (forces a prompt even in auto mode).
 Every block appends a lesson (see _common.append_lesson).
 Why: docs example block-rm.sh + anthropics/claude-code bash_command_validator_example.py. Regex guards are
-bypassable (python -c, eval, base64) - they are guidance + audit; deny rules + sandbox enforce. A timed-out
-command hook does NOT block, so keep it fast. Grade B (practice) / C (security value) - 04_hooks.md C3a."""
+bypassable (python -c, base64, a script file) - they are guidance + audit; deny rules + sandbox enforce. A
+timed-out command hook does NOT block, so keep it fast. Grade B (practice) / C (security value) - 04_hooks.md C3a.
+Only executed parts are checked (see _shell.py): quoted data such as commit messages or heredocs written to
+files does not trigger rules; -c strings, eval, substitutions, xargs and pipes into a shell do."""
 import os, re, shlex, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from _common import load_input, emit, append_lesson
+from _shell import Unbalanced, executed_parts
 
 DANGEROUS_RM_TARGETS = {"/", "/*", "~", "~/", "$HOME", "${HOME}", "*", ".", "./", "..", "../", "./*"}
 # rm may delete inside the project and under /tmp, judged by the real path (symlinks resolved); never the
@@ -15,7 +18,7 @@ DANGEROUS_RM_TARGETS = {"/", "/*", "~", "~/", "$HOME", "${HOME}", "*", ".", "./"
 # agents clean build artifacts and temp files without asking. Temp files live in /tmp/<name>, not $TMPDIR.
 TMP_ROOTS = ("/tmp", "/private/tmp")
 GLOB = re.compile(r"[*?[]")
-# (rule_id, decision, regex on full command, hint)
+# (rule_id, decision, regex on the executed text with quoted literals blanked, hint)
 RULES = [
     ("no-verify", "deny", r"\bgit\s+(commit|push)\b[^|;&]*\s(--no-verify|-n)\b",
      "Do not skip git hooks; fix the failing pre-commit/pre-push check instead."),
@@ -30,6 +33,7 @@ RULES = [
     ("fork-bomb", "deny", r":\(\)\s*\{\s*:\|:&\s*\};:", "Fork bomb."),
     ("hard-reset", "ask", r"\bgit\s+(reset\s+--hard|clean\s+-[a-zA-Z]*f|checkout\s+--\s+\.|restore\s+(--worktree\s+)?\.)",
      "Discards uncommitted work. Prefer `git stash push -u` first."),
+    # SQL is quoted data for psql & co, so this one rule is checked on the raw text
     ("sql-destructive", "ask", r"(?i)\b(drop\s+(database|schema|table)|truncate\s+table|delete\s+from\s+\w+\s*(;|$))",
      "Destructive SQL: confirm target DB is disposable (never prod)."),
     ("infra-destroy", "ask", r"\b(terraform\s+(destroy|apply\s+[^|;&]*-auto-approve)|kubectl\s+delete|aws\s+s3\s+rm\s+[^|;&]*--recursive|az\s+group\s+delete|alembic\s+downgrade\s+base)\b",
@@ -88,8 +92,9 @@ def rm_target_problem(t, cwd, root, home):
     return None
 
 
-def rm_danger(cmd, cwd, root, home):
-    """First (target, why) rm must not touch, or None. Without a project root every rm is refused."""
+def _whole_text(cmd):
+    """Fallback when the command cannot be balanced: every line-level segment, quotes ignored (stricter)."""
+    commands = []
     for seg in re.split(r"&&|\|\||;|\||\n", cmd):
         try:
             toks = shlex.split(seg, posix=True)
@@ -97,6 +102,20 @@ def rm_danger(cmd, cwd, root, home):
             toks = seg.split()
         while toks and (re.match(r"^\w+=", toks[0]) or toks[0] in ("sudo", "command", "exec")):
             toks = toks[1:]
+        commands.append(toks)
+    return commands, [cmd]
+
+
+def parts(cmd):
+    try:
+        return executed_parts(cmd)
+    except Unbalanced:
+        return _whole_text(cmd)
+
+
+def rm_danger(commands, cwd, root, home):
+    """First (target, why) rm must not touch, or None. Without a project root every rm is refused."""
+    for toks in commands:
         if not toks or os.path.basename(toks[0]) != "rm":
             continue
         targets, opts_done = [], False
@@ -121,14 +140,16 @@ def main():
     root = os.environ.get("CLAUDE_PROJECT_DIR") or data.get("cwd") or ""
     root = os.path.normpath(root) if root else ""
     cwd = os.path.normpath(data.get("cwd") or root or ".")
-    found = rm_danger(cmd, cwd, root, os.path.normpath(os.path.expanduser("~")))
+    commands, skeletons = parts(cmd)
+    found = rm_danger(commands, cwd, root, os.path.normpath(os.path.expanduser("~")))
     if found:
         t, why = found
         hits.append(("rm-dangerous-target", "deny",
                      f"`rm` on `{t}` is blocked: {why}. rm may delete inside the project or under /tmp, "
                      "e.g. `rm -rf node_modules dist` or `rm -rf /tmp/<name>`."))
     for rule_id, decision, rx, hint in RULES:
-        if re.search(rx, cmd):
+        texts = [cmd] if rule_id == "sql-destructive" else skeletons
+        if any(re.search(rx, t) for t in texts):
             hits.append((rule_id, decision, hint))
     if not hits:
         sys.exit(0)  # no decision -> normal permission flow (silence never approves)
