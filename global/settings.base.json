@@ -177,6 +177,18 @@
           }
         ]
       }
+    ],
+    "SessionStart": [
+      {
+        "matcher": "startup|resume",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "$HOME/.config/claude-kit/hooks/personal_dirty.sh",
+            "timeout": 5
+          }
+        ]
+      }
     ]
   },
   "statusLine": {
