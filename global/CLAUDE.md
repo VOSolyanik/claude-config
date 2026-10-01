@@ -25,6 +25,7 @@
 ## Safety and reversibility
 - Take local, reversible actions freely. Ask before destructive or shared-state actions: dropping or truncating data, force-push, pushing, merging, deploying, posting to PRs or chats.
 - Don't bypass checks (`--no-verify`, disabling hooks, editing guard configuration) to get unblocked; report the blocker instead.
+- If a guard hook or a deny rule blocks a command, stop and report it; don't route around it through a script file, `python`, `find -delete` or the like, and if you think the block is a false positive, say so and ask.
 - Never print, copy or commit secrets. Reference them by environment variable or secret-manager name.
 
 ## Commits and PRs
