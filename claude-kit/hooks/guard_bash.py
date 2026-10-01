@@ -10,6 +10,11 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from _common import load_input, emit, append_lesson
 
 DANGEROUS_RM_TARGETS = {"/", "/*", "~", "~/", "$HOME", "${HOME}", "*", ".", "./", "..", "../", "./*"}
+# rm may delete inside the project and under /tmp, judged by the real path (symlinks resolved); never the
+# roots themselves, .git, ancestors of the project or home, or anything else. Owner's intent (01.10.2026):
+# agents clean build artifacts and temp files without asking. Temp files live in /tmp/<name>, not $TMPDIR.
+TMP_ROOTS = ("/tmp", "/private/tmp")
+GLOB = re.compile(r"[*?[]")
 # (rule_id, decision, regex on full command, hint)
 RULES = [
     ("no-verify", "deny", r"\bgit\s+(commit|push)\b[^|;&]*\s(--no-verify|-n)\b",
@@ -32,7 +37,59 @@ RULES = [
 ]
 
 
-def rm_danger(cmd):
+def _under(path, root):
+    return path == root or path.startswith(root.rstrip("/") + "/")
+
+
+def _expand_home(t, home):
+    if t == "~" or t.startswith("~/"):
+        return home + t[1:]
+    for v in ("$HOME", "${HOME}"):
+        if t == v or t.startswith(v + "/"):
+            return home + t[len(v):]
+    return t
+
+
+def _real(path):
+    """Where rm acts: realpath(dirname) + basename. `x` removes a symlink x itself; for `x/` the dirname is
+    x, so the link is followed."""
+    return os.path.normpath(os.path.join(os.path.realpath(os.path.dirname(path)), os.path.basename(path)))
+
+
+def rm_target_problem(t, cwd, root, home):
+    """Why rm must not touch target t, or None."""
+    if t in DANGEROUS_RM_TARGETS:
+        return "a protected target"
+    t = _expand_home(t, home)
+    if "$" in t or "`" in t:
+        return "an unexpanded variable; use a literal path"
+    named = os.path.join(cwd, t)
+    path = _real(named)
+    root_r, home_r = os.path.realpath(root), os.path.realpath(home)
+    tmp_r = tuple({os.path.realpath(r) for r in TMP_ROOTS} | set(TMP_ROOTS))
+    parts = path.split("/")
+    if ".git" in parts:
+        return "inside .git"
+    globbed = [k for k, part in enumerate(parts) if GLOB.search(part)]
+    if globbed:  # a glob stands for everything in its directory: judge that directory
+        path = "/".join(parts[:globbed[0]]) or "/"
+    if path in tmp_r:
+        return "the temp root itself"
+    if path == root_r:
+        return "the project root"
+    if _under(root_r, path) or _under(home_r, path):
+        return "an ancestor of the project or home"
+    in_project = _under(path, root_r)
+    if not (in_project or any(_under(path, r) for r in tmp_r)):
+        return "outside the project and /tmp"
+    lexical = os.path.normpath(named)
+    if not in_project and (_under(lexical, root) or _under(lexical, root_r)):
+        return "a symlink that leads out of the project"
+    return None
+
+
+def rm_danger(cmd, cwd, root, home):
+    """First (target, why) rm must not touch, or None. Without a project root every rm is refused."""
     for seg in re.split(r"&&|\|\||;|\||\n", cmd):
         try:
             toks = shlex.split(seg, posix=True)
@@ -42,12 +99,18 @@ def rm_danger(cmd):
             toks = toks[1:]
         if not toks or os.path.basename(toks[0]) != "rm":
             continue
-        flags = "".join(t.lstrip("-") for t in toks[1:] if t.startswith("-"))
-        recursive = "r" in flags.lower() or "--recursive" in toks
-        targets = [t for t in toks[1:] if not t.startswith("-")]
+        targets, opts_done = [], False
+        for t in toks[1:]:
+            if not opts_done and t == "--":
+                opts_done = True
+            elif opts_done or not t.startswith("-"):
+                targets.append(t)
         for t in targets:
-            if t in DANGEROUS_RM_TARGETS or (recursive and re.fullmatch(r"/[^/]*/?", t)):
-                return t
+            if not root:
+                return t, "no project root (CLAUDE_PROJECT_DIR and the hook's cwd are both missing)"
+            why = rm_target_problem(t, cwd, root, home)
+            if why:
+                return t, why
     return None
 
 
@@ -55,9 +118,15 @@ def main():
     data = load_input()
     cmd = (data.get("tool_input") or {}).get("command") or ""
     hits = []
-    t = rm_danger(cmd)
-    if t:
-        hits.append(("rm-dangerous-target", "deny", f"`rm` on `{t}` is blocked. Delete explicit sub-paths (e.g. `rm -r build/`)."))
+    root = os.environ.get("CLAUDE_PROJECT_DIR") or data.get("cwd") or ""
+    root = os.path.normpath(root) if root else ""
+    cwd = os.path.normpath(data.get("cwd") or root or ".")
+    found = rm_danger(cmd, cwd, root, os.path.normpath(os.path.expanduser("~")))
+    if found:
+        t, why = found
+        hits.append(("rm-dangerous-target", "deny",
+                     f"`rm` on `{t}` is blocked: {why}. rm may delete inside the project or under /tmp, "
+                     "e.g. `rm -rf node_modules dist` or `rm -rf /tmp/<name>`."))
     for rule_id, decision, rx, hint in RULES:
         if re.search(rx, cmd):
             hits.append((rule_id, decision, hint))
