@@ -232,9 +232,10 @@ def _command(toks, queue, commands):
 
 
 def executed_parts(cmd):
-    """(commands, skeletons): token lists of every simple command a shell would run, and the text of every
-    executed piece with quoted literals blanked. Raises Unbalanced on text it cannot balance."""
-    commands, skeletons, queue = [], [], [(cmd, 0)]
+    """(commands, skeletons, pipelines): token lists of every simple command a shell would run (unquoted),
+    the text of every executed piece with quoted literals blanked, and the commands of every pipeline of two
+    or more. Raises Unbalanced on text it cannot balance."""
+    commands, skeletons, pipelines, queue = [], [], [], [(cmd, 0)]
     while queue:
         text, depth = queue.pop()
         if depth > MAX_DEPTH or not text.strip():
@@ -249,6 +250,8 @@ def executed_parts(cmd):
             pipeline.append((idx, toks, role))
             if sep == "|":
                 continue
+            if len(pipeline) > 1:
+                pipelines.append([toks_ for _, toks_, _ in pipeline])
             if any(role == "stdin" for _, _, role in pipeline):
                 members = {i for i, _, _ in pipeline}
                 found.extend(body for i, body in heredocs if i in members)
@@ -257,4 +260,4 @@ def executed_parts(cmd):
                         found.extend(toks_[1:])
             pipeline = []
         queue.extend((t, depth + 1) for t in found)
-    return commands, skeletons
+    return commands, skeletons, pipelines

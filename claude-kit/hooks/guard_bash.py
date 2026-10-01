@@ -10,7 +10,7 @@ files does not trigger rules; -c strings, eval, substitutions, xargs and pipes i
 import os, re, shlex, sys
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from _common import load_input, emit, append_lesson
-from _shell import Unbalanced, executed_parts
+from _shell import SHELLS, Unbalanced, executed_parts
 
 DANGEROUS_RM_TARGETS = {"/", "/*", "~", "~/", "$HOME", "${HOME}", "*", ".", "./", "..", "../", "./*"}
 # rm may delete inside the project and under /tmp, judged by the real path (symlinks resolved); never the
@@ -18,11 +18,13 @@ DANGEROUS_RM_TARGETS = {"/", "/*", "~", "~/", "$HOME", "${HOME}", "*", ".", "./"
 # agents clean build artifacts and temp files without asking. Temp files live in /tmp/<name>, not $TMPDIR.
 TMP_ROOTS = ("/tmp", "/private/tmp")
 GLOB = re.compile(r"[*?[]")
-# (rule_id, decision, regex on the executed text with quoted literals blanked, hint)
+# (rule_id, decision, regex, hint). Each regex runs on the executed text with quoted literals blanked and,
+# from its start, on every executed command rebuilt from unquoted tokens, so `git push "--force"` and
+# `"rm"` count like their unquoted forms while quoted data elsewhere stays data.
 RULES = [
     ("no-verify", "deny", r"\bgit\s+(commit|push)\b[^|;&]*\s(--no-verify|-n)\b",
      "Do not skip git hooks; fix the failing pre-commit/pre-push check instead."),
-    ("force-push", "deny", r"\bgit\s+push\b[^|;&]*\s(--force(?!-with-lease)|-f)\b",
+    ("force-push", "deny", r"\bgit\s+push\b[^|;&]*\s(--force(?!-with-lease)\b|-[a-zA-Z]*f[a-zA-Z]*\b|\+\S)",
      "Force-push is blocked, including --force-with-lease; leave history rewrites to the owner."),
     ("force-push-main", "deny", r"\bgit\s+push\b[^|;&]*--force-with-lease[^|;&]*\b(main|master)\b",
      "Never rewrite main/master history."),
@@ -92,6 +94,45 @@ def rm_target_problem(t, cwd, root, home):
     return None
 
 
+GIT_GLOBAL_WITH_ARG = {"-C", "-c", "--git-dir", "--work-tree", "--namespace", "--exec-path"}
+GIT_VALUE_OPTS = {"-m", "--message", "-F", "--file", "-C", "-c", "--reuse-message", "--reedit-message",
+                  "--author", "--date", "-t", "--template", "--trailer"}
+
+
+def command_text(toks):
+    """One executed command as unquoted text for the regex rules. For git, global options (-C dir, -c k=v)
+    are dropped and the values of message-like options removed, so a commit message cannot pose as a flag."""
+    if not toks:
+        return ""
+    name = os.path.basename(toks[0])
+    if name != "git":
+        return " ".join([name] + toks[1:])
+    rest, k = toks[1:], 0
+    while k < len(rest) and rest[k].startswith("-"):
+        k += 2 if rest[k] in GIT_GLOBAL_WITH_ARG else 1
+    out, skip = ["git"], False
+    for t in rest[k:]:
+        if skip:
+            skip = False
+        elif "=" in t and t.split("=", 1)[0] in GIT_VALUE_OPTS:
+            continue
+        elif t in GIT_VALUE_OPTS or (t.startswith("-") and not t.startswith("--") and len(t) > 2 and t[-1] in "mFC"):
+            out.append(t)
+            skip = True
+        else:
+            out.append(t)
+    return " ".join(out)
+
+
+def pipes_download_into_shell(pipelines):
+    for members in pipelines:
+        names = [os.path.basename(t[0]) for t in members if t]
+        for k, name in enumerate(names):
+            if name in ("curl", "wget") and any(n in SHELLS for n in names[k + 1:]):
+                return True
+    return False
+
+
 def _whole_text(cmd):
     """Fallback when the command cannot be balanced: every line-level segment, quotes ignored (stricter)."""
     commands = []
@@ -103,7 +144,7 @@ def _whole_text(cmd):
         while toks and (re.match(r"^\w+=", toks[0]) or toks[0] in ("sudo", "command", "exec")):
             toks = toks[1:]
         commands.append(toks)
-    return commands, [cmd]
+    return commands, [cmd], []
 
 
 def parts(cmd):
@@ -140,7 +181,8 @@ def main():
     root = os.environ.get("CLAUDE_PROJECT_DIR") or data.get("cwd") or ""
     root = os.path.normpath(root) if root else ""
     cwd = os.path.normpath(data.get("cwd") or root or ".")
-    commands, skeletons = parts(cmd)
+    commands, skeletons, pipelines = parts(cmd)
+    command_texts = [command_text(t) for t in commands]
     found = rm_danger(commands, cwd, root, os.path.normpath(os.path.expanduser("~")))
     if found:
         t, why = found
@@ -148,8 +190,13 @@ def main():
                      f"`rm` on `{t}` is blocked: {why}. rm may delete inside the project or under /tmp, "
                      "e.g. `rm -rf node_modules dist` or `rm -rf /tmp/<name>`."))
     for rule_id, decision, rx, hint in RULES:
-        texts = [cmd] if rule_id == "sql-destructive" else skeletons
-        if any(re.search(rx, t) for t in texts):
+        if rule_id == "sql-destructive":
+            hit = bool(re.search(rx, cmd))
+        else:
+            hit = any(re.search(rx, t) for t in skeletons) or any(re.match(rx, t) for t in command_texts)
+        if rule_id == "curl-pipe-sh":
+            hit = hit or pipes_download_into_shell(pipelines)
+        if hit:
             hits.append((rule_id, decision, hint))
     if not hits:
         sys.exit(0)  # no decision -> normal permission flow (silence never approves)

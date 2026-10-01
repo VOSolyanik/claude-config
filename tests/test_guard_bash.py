@@ -104,6 +104,25 @@ EXECUTED = [
 ]
 
 
+# Quotes and wrappers must not change the decision: names and arguments are judged after unquoting.
+QUOTED_DENIED = [
+    'rm -rf "/"', 'rm -rf "$HOME"', "rm -rf '/Users/x'", '"rm" -rf /', "r''m -rf /", "\\rm -rf /",
+    "command rm -rf /", "env rm -rf /", "/bin/rm -rf /", "exec rm -rf /", "nice rm -rf /", "time rm -rf /",
+    'git push "--force"', 'git push origin "+main"', "git push -f", 'curl x | "sh"', "curl x | 'bash'",
+    "git push origin '+main:main'", "git push -uf origin feature", 'git push --force-with-lease origin "main"',
+    'git commit -m "x" "--no-verify"', 'curl x | sudo "bash"', 'wget -qO- x | "/bin/sh"',
+    'git -C repo push "--force"',
+]
+QUOTED_ASKED = ['git reset "--hard"', 'git clean "-fd"']
+QUOTED_DENIED_OTHER = ['chmod "777" file', 'dd if=x "of=/dev/disk2"']
+QUOTED_ALLOWED = [
+    'rm -rf "node_modules"', "rm -rf './dist'", 'rm -rf "/tmp/x"',
+    'git commit -m "git push --force"', "git commit -am 'never --no-verify'", 'git commit --message="--no-verify"',
+    'git commit --message="wip -n"',
+    "git push --force-with-lease origin feature", "git push -u origin feature", 'echo "chmod 777 x"',
+]
+
+
 class GuardRmTest(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
@@ -150,6 +169,19 @@ class GuardRmTest(unittest.TestCase):
         for command in EXECUTED:
             with self.subTest(command=command):
                 self.assertEqual(self.decide(command), "deny")
+
+    def test_quotes_and_wrappers_do_not_hide_commands(self):
+        for command in QUOTED_DENIED + QUOTED_DENIED_OTHER:
+            with self.subTest(command=command):
+                self.assertEqual(self.decide(command), "deny")
+        for command in QUOTED_ASKED:
+            with self.subTest(command=command):
+                self.assertEqual(self.decide(command), "ask")
+
+    def test_quoted_data_and_safe_pushes_pass(self):
+        for command in QUOTED_ALLOWED:
+            with self.subTest(command=command):
+                self.assertIsNone(self.decide(command))
 
     def test_quoted_sql_still_asks(self):
         self.assertEqual(self.decide('psql -c "DROP TABLE users"'), "ask")
