@@ -3,7 +3,8 @@
   "cleanupPeriodDays": 90,
   "autoCompactWindow": 400000,
   "env": {
-    "CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH": "2"
+    "CLAUDE_CODE_MAX_SUBAGENT_SPAWN_DEPTH": "2",
+    "CLAUDE_CODE_SUBPROCESS_ENV_SCRUB": "1"
   },
   "permissions": {
     "allow": [
