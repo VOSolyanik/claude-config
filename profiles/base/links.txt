@@ -3,6 +3,5 @@
 # Links always point into the live clone (~/tools/claude-config), never into a working copy.
 # ~/.claude/settings.json is not here on purpose: `claude-config apply` builds it from the settings layers.
 global/CLAUDE.md                  ~/.claude/CLAUDE.md
-global/statusline.sh              ~/.claude/statusline.sh
 global/skills/harness-audit       ~/.claude/skills/harness-audit
 claude-kit                        ~/.config/claude-kit

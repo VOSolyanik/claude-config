@@ -24,11 +24,11 @@ working copy                                     live clone
 | `bin/claude-config` | the tool: bash 3.2 and `jq` |
 | `global/CLAUDE.md` | general instructions for any developer → `~/.claude/CLAUDE.md` |
 | `global/settings.base.json` | base settings layer: permission rules for secrets and destructive commands, hooks from `claude-kit` |
-| `global/statusline.sh` | status line → `~/.claude/statusline.sh` |
 | `global/skills/<name>/` | general skills → `~/.claude/skills/<name>` |
 | `claude-kit/hooks/` | hooks → `~/.config/claude-kit/hooks` (see below) |
+| `claude-kit/statusline.sh` | status line: cwd and branch, model, effort, context %, prompt cache, session $, 5h limit → `~/.config/claude-kit/statusline.sh` |
 | `profiles/base/links.txt` | manifest: what gets linked where |
-| `tests/` | `run.sh` (the tool), `test_*.py` (hooks), `integration.sh` (real `claude` against a fake API) |
+| `tests/` | `run.sh` (the tool), `test_*.py` (hooks, status line), `integration.sh` (real `claude` against a fake API) |
 
 The private repository needs only two files to plug in: `links.txt` (its own manifest, same format) and `settings.personal.json` (its settings layer). Typical content: `rules/personal.md` (picked up from `~/.claude/rules/`), `memory/`, `writing/`, private `skills/` and `agents/`.
 
