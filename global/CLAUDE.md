@@ -46,6 +46,7 @@
 - Python: `uv` (not pip/poetry). JavaScript/TypeScript: `pnpm` (not npm/npx). Follow the repo's AGENTS.md when it says otherwise.
 - Prefer CLIs (`gh`, `aws`, `az`, `psql`) over equivalent MCP servers when both exist.
 - For structural code questions (callers, definitions, dependency paths) use the codebase-memory tools when they are available, before repeated grep and file reads.
+- Create temporary files only under `/tmp/<name>`, not with `mktemp` or `$TMPDIR`: the rm guard blocks `/var/folders`, so they could not be cleaned up.
 
 ## Context hygiene
 - When compacting, preserve: the current task and acceptance criteria, modified files, the exact commands last run with their results, decisions and open questions.
