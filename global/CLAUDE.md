@@ -28,7 +28,7 @@
 - Never print, copy or commit secrets. Reference them by environment variable or secret-manager name.
 
 ## Commits and PRs
-- Conventional commit format: `type(scope): subject`. Types: feat, fix, refactor, test, docs, chore, perf.
+- Conventional commit format: `type(scope): subject`, scope optional. Types: feat, fix, refactor, test, docs, chore, perf.
 - Subject under 72 chars, imperative mood ("add X" not "added X").
 - One concern per commit. Long PR descriptions are fine; long commit subjects aren't.
 - Never push to main/master directly.
