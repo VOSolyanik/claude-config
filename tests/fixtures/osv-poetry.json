@@ -1,0 +1,355 @@
+{
+  "results": [
+    {
+      "source": {
+        "path": "poetry.lock",
+        "type": "lockfile"
+      },
+      "packages": [
+        {
+          "package": {
+            "name": "requests",
+            "version": "2.19.0",
+            "ecosystem": "PyPI"
+          },
+          "groups": [
+            {
+              "ids": [
+                "PYSEC-2018-28",
+                "GHSA-x84v-xcm2-53pg"
+              ],
+              "aliases": [
+                "CVE-2018-18074",
+                "GHSA-x84v-xcm2-53pg",
+                "PYSEC-2018-28"
+              ],
+              "max_severity": "7.5"
+            },
+            {
+              "ids": [
+                "PYSEC-2023-74",
+                "GHSA-j8r2-6x86-q33q"
+              ],
+              "aliases": [
+                "CVE-2023-32681",
+                "GHSA-j8r2-6x86-q33q",
+                "PYSEC-2023-74"
+              ],
+              "max_severity": "6.1"
+            },
+            {
+              "ids": [
+                "PYSEC-2026-1872",
+                "GHSA-9hjg-9r4m-mvj7"
+              ],
+              "aliases": [
+                "CVE-2024-47081",
+                "GHSA-9hjg-9r4m-mvj7",
+                "PYSEC-2026-1872"
+              ],
+              "max_severity": "5.3"
+            },
+            {
+              "ids": [
+                "PYSEC-2026-1873",
+                "GHSA-9wx4-h78v-vm56"
+              ],
+              "aliases": [
+                "CVE-2024-35195",
+                "GHSA-9wx4-h78v-vm56",
+                "PYSEC-2026-1873"
+              ],
+              "max_severity": "5.6"
+            },
+            {
+              "ids": [
+                "PYSEC-2026-2275",
+                "GHSA-gc5v-m9x4-r6x2"
+              ],
+              "aliases": [
+                "CVE-2026-25645",
+                "GHSA-gc5v-m9x4-r6x2",
+                "PYSEC-2026-2275"
+              ],
+              "max_severity": "5.5"
+            }
+          ],
+          "vulnerabilities": [
+            {
+              "id": "PYSEC-2018-28",
+              "summary": null,
+              "aliases": [
+                "CVE-2018-18074",
+                "GHSA-x84v-xcm2-53pg"
+              ],
+              "affected": [
+                {
+                  "ranges": [
+                    {
+                      "type": "GIT",
+                      "events": [
+                        {
+                          "introduced": "0"
+                        },
+                        {
+                          "fixed": "c45d7c49ea75133e52ab22a8e9e13173938e36ff"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "ECOSYSTEM",
+                      "events": [
+                        {
+                          "introduced": "0"
+                        },
+                        {
+                          "fixed": "2.20.0"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "PYSEC-2023-74",
+              "summary": null,
+              "aliases": [
+                "CVE-2023-32681",
+                "GHSA-j8r2-6x86-q33q"
+              ],
+              "affected": [
+                {
+                  "ranges": [
+                    {
+                      "type": "GIT",
+                      "events": [
+                        {
+                          "introduced": "0"
+                        },
+                        {
+                          "fixed": "74ea7cf7a6a27a4eeb2ae24e162bcc942a6706d5"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "ECOSYSTEM",
+                      "events": [
+                        {
+                          "introduced": "2.3.0"
+                        },
+                        {
+                          "fixed": "2.31.0"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "PYSEC-2026-1872",
+              "summary": "Requests vulnerable to .netrc credentials leak via malicious URLs",
+              "aliases": [
+                "CVE-2024-47081",
+                "GHSA-9hjg-9r4m-mvj7"
+              ],
+              "affected": [
+                {
+                  "ranges": [
+                    {
+                      "type": "ECOSYSTEM",
+                      "events": [
+                        {
+                          "introduced": "0"
+                        },
+                        {
+                          "fixed": "2.32.4"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "PYSEC-2026-1873",
+              "summary": "Requests `Session` object does not verify requests after making first request with verify=False",
+              "aliases": [
+                "CVE-2024-35195",
+                "GHSA-9wx4-h78v-vm56"
+              ],
+              "affected": [
+                {
+                  "ranges": [
+                    {
+                      "type": "ECOSYSTEM",
+                      "events": [
+                        {
+                          "introduced": "0"
+                        },
+                        {
+                          "fixed": "2.32.0"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "PYSEC-2026-2275",
+              "summary": null,
+              "aliases": [
+                "CVE-2026-25645",
+                "GHSA-gc5v-m9x4-r6x2"
+              ],
+              "affected": [
+                {
+                  "ranges": [
+                    {
+                      "type": "ECOSYSTEM",
+                      "events": [
+                        {
+                          "introduced": "0"
+                        },
+                        {
+                          "fixed": "2.33.0"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "GHSA-9hjg-9r4m-mvj7",
+              "summary": "Requests vulnerable to .netrc credentials leak via malicious URLs",
+              "aliases": [
+                "CVE-2024-47081",
+                "PYSEC-2026-1872"
+              ],
+              "affected": [
+                {
+                  "ranges": [
+                    {
+                      "type": "ECOSYSTEM",
+                      "events": [
+                        {
+                          "introduced": "0"
+                        },
+                        {
+                          "fixed": "2.32.4"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "GHSA-9wx4-h78v-vm56",
+              "summary": "Requests `Session` object does not verify requests after making first request with verify=False",
+              "aliases": [
+                "CVE-2024-35195",
+                "PYSEC-2026-1873"
+              ],
+              "affected": [
+                {
+                  "ranges": [
+                    {
+                      "type": "ECOSYSTEM",
+                      "events": [
+                        {
+                          "introduced": "0"
+                        },
+                        {
+                          "fixed": "2.32.0"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "GHSA-gc5v-m9x4-r6x2",
+              "summary": "Requests has Insecure Temp File Reuse in its extract_zipped_paths() utility function",
+              "aliases": [
+                "CVE-2026-25645",
+                "PYSEC-2026-2275"
+              ],
+              "affected": [
+                {
+                  "ranges": [
+                    {
+                      "type": "ECOSYSTEM",
+                      "events": [
+                        {
+                          "introduced": "0"
+                        },
+                        {
+                          "fixed": "2.33.0"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "GHSA-j8r2-6x86-q33q",
+              "summary": "Unintended leak of Proxy-Authorization header in requests",
+              "aliases": [
+                "CVE-2023-32681",
+                "PYSEC-2023-74"
+              ],
+              "affected": [
+                {
+                  "ranges": [
+                    {
+                      "type": "ECOSYSTEM",
+                      "events": [
+                        {
+                          "introduced": "2.3.0"
+                        },
+                        {
+                          "fixed": "2.31.0"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "GHSA-x84v-xcm2-53pg",
+              "summary": "Insufficiently Protected Credentials in Requests",
+              "aliases": [
+                "CVE-2018-18074",
+                "PYSEC-2018-28"
+              ],
+              "affected": [
+                {
+                  "ranges": [
+                    {
+                      "type": "ECOSYSTEM",
+                      "events": [
+                        {
+                          "introduced": "0"
+                        },
+                        {
+                          "fixed": "2.20.0"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

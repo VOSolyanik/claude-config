@@ -1,0 +1,1346 @@
+{
+  "results": [
+    {
+      "source": {
+        "path": "requirements.txt",
+        "type": "lockfile"
+      },
+      "packages": [
+        {
+          "package": {
+            "name": "requests",
+            "version": "2.19.0",
+            "ecosystem": "PyPI"
+          },
+          "groups": [
+            {
+              "ids": [
+                "PYSEC-2018-28",
+                "GHSA-x84v-xcm2-53pg"
+              ],
+              "aliases": [
+                "CVE-2018-18074",
+                "GHSA-x84v-xcm2-53pg",
+                "PYSEC-2018-28"
+              ],
+              "max_severity": "7.5"
+            },
+            {
+              "ids": [
+                "PYSEC-2023-74",
+                "GHSA-j8r2-6x86-q33q"
+              ],
+              "aliases": [
+                "CVE-2023-32681",
+                "GHSA-j8r2-6x86-q33q",
+                "PYSEC-2023-74"
+              ],
+              "max_severity": "6.1"
+            },
+            {
+              "ids": [
+                "PYSEC-2026-1872",
+                "GHSA-9hjg-9r4m-mvj7"
+              ],
+              "aliases": [
+                "CVE-2024-47081",
+                "GHSA-9hjg-9r4m-mvj7",
+                "PYSEC-2026-1872"
+              ],
+              "max_severity": "5.3"
+            },
+            {
+              "ids": [
+                "PYSEC-2026-1873",
+                "GHSA-9wx4-h78v-vm56"
+              ],
+              "aliases": [
+                "CVE-2024-35195",
+                "GHSA-9wx4-h78v-vm56",
+                "PYSEC-2026-1873"
+              ],
+              "max_severity": "5.6"
+            },
+            {
+              "ids": [
+                "PYSEC-2026-2275",
+                "GHSA-gc5v-m9x4-r6x2"
+              ],
+              "aliases": [
+                "CVE-2026-25645",
+                "GHSA-gc5v-m9x4-r6x2",
+                "PYSEC-2026-2275"
+              ],
+              "max_severity": "5.5"
+            }
+          ],
+          "vulnerabilities": [
+            {
+              "id": "PYSEC-2018-28",
+              "summary": null,
+              "aliases": [
+                "CVE-2018-18074",
+                "GHSA-x84v-xcm2-53pg"
+              ],
+              "affected": [
+                {
+                  "ranges": [
+                    {
+                      "type": "GIT",
+                      "events": [
+                        {
+                          "introduced": "0"
+                        },
+                        {
+                          "fixed": "c45d7c49ea75133e52ab22a8e9e13173938e36ff"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "ECOSYSTEM",
+                      "events": [
+                        {
+                          "introduced": "0"
+                        },
+                        {
+                          "fixed": "2.20.0"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "PYSEC-2023-74",
+              "summary": null,
+              "aliases": [
+                "CVE-2023-32681",
+                "GHSA-j8r2-6x86-q33q"
+              ],
+              "affected": [
+                {
+                  "ranges": [
+                    {
+                      "type": "GIT",
+                      "events": [
+                        {
+                          "introduced": "0"
+                        },
+                        {
+                          "fixed": "74ea7cf7a6a27a4eeb2ae24e162bcc942a6706d5"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "ECOSYSTEM",
+                      "events": [
+                        {
+                          "introduced": "2.3.0"
+                        },
+                        {
+                          "fixed": "2.31.0"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "PYSEC-2026-1872",
+              "summary": "Requests vulnerable to .netrc credentials leak via malicious URLs",
+              "aliases": [
+                "CVE-2024-47081",
+                "GHSA-9hjg-9r4m-mvj7"
+              ],
+              "affected": [
+                {
+                  "ranges": [
+                    {
+                      "type": "ECOSYSTEM",
+                      "events": [
+                        {
+                          "introduced": "0"
+                        },
+                        {
+                          "fixed": "2.32.4"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "PYSEC-2026-1873",
+              "summary": "Requests `Session` object does not verify requests after making first request with verify=False",
+              "aliases": [
+                "CVE-2024-35195",
+                "GHSA-9wx4-h78v-vm56"
+              ],
+              "affected": [
+                {
+                  "ranges": [
+                    {
+                      "type": "ECOSYSTEM",
+                      "events": [
+                        {
+                          "introduced": "0"
+                        },
+                        {
+                          "fixed": "2.32.0"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "PYSEC-2026-2275",
+              "summary": null,
+              "aliases": [
+                "CVE-2026-25645",
+                "GHSA-gc5v-m9x4-r6x2"
+              ],
+              "affected": [
+                {
+                  "ranges": [
+                    {
+                      "type": "ECOSYSTEM",
+                      "events": [
+                        {
+                          "introduced": "0"
+                        },
+                        {
+                          "fixed": "2.33.0"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "GHSA-9hjg-9r4m-mvj7",
+              "summary": "Requests vulnerable to .netrc credentials leak via malicious URLs",
+              "aliases": [
+                "CVE-2024-47081",
+                "PYSEC-2026-1872"
+              ],
+              "affected": [
+                {
+                  "ranges": [
+                    {
+                      "type": "ECOSYSTEM",
+                      "events": [
+                        {
+                          "introduced": "0"
+                        },
+                        {
+                          "fixed": "2.32.4"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "GHSA-9wx4-h78v-vm56",
+              "summary": "Requests `Session` object does not verify requests after making first request with verify=False",
+              "aliases": [
+                "CVE-2024-35195",
+                "PYSEC-2026-1873"
+              ],
+              "affected": [
+                {
+                  "ranges": [
+                    {
+                      "type": "ECOSYSTEM",
+                      "events": [
+                        {
+                          "introduced": "0"
+                        },
+                        {
+                          "fixed": "2.32.0"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "GHSA-gc5v-m9x4-r6x2",
+              "summary": "Requests has Insecure Temp File Reuse in its extract_zipped_paths() utility function",
+              "aliases": [
+                "CVE-2026-25645",
+                "PYSEC-2026-2275"
+              ],
+              "affected": [
+                {
+                  "ranges": [
+                    {
+                      "type": "ECOSYSTEM",
+                      "events": [
+                        {
+                          "introduced": "0"
+                        },
+                        {
+                          "fixed": "2.33.0"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "GHSA-j8r2-6x86-q33q",
+              "summary": "Unintended leak of Proxy-Authorization header in requests",
+              "aliases": [
+                "CVE-2023-32681",
+                "PYSEC-2023-74"
+              ],
+              "affected": [
+                {
+                  "ranges": [
+                    {
+                      "type": "ECOSYSTEM",
+                      "events": [
+                        {
+                          "introduced": "2.3.0"
+                        },
+                        {
+                          "fixed": "2.31.0"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "GHSA-x84v-xcm2-53pg",
+              "summary": "Insufficiently Protected Credentials in Requests",
+              "aliases": [
+                "CVE-2018-18074",
+                "PYSEC-2018-28"
+              ],
+              "affected": [
+                {
+                  "ranges": [
+                    {
+                      "type": "ECOSYSTEM",
+                      "events": [
+                        {
+                          "introduced": "0"
+                        },
+                        {
+                          "fixed": "2.20.0"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "source": {
+        "path": "requirements.txt",
+        "type": "unknown"
+      },
+      "packages": [
+        {
+          "package": {
+            "name": "idna",
+            "version": "2.7.0",
+            "ecosystem": "PyPI"
+          },
+          "groups": [
+            {
+              "ids": [
+                "PYSEC-2024-60",
+                "GHSA-jjg7-2v4v-x38h"
+              ],
+              "aliases": [
+                "CVE-2024-3651",
+                "GHSA-jjg7-2v4v-x38h",
+                "PYSEC-2024-60"
+              ],
+              "max_severity": "7.5"
+            },
+            {
+              "ids": [
+                "PYSEC-2026-215",
+                "GHSA-65pc-fj4g-8rjx"
+              ],
+              "aliases": [
+                "CVE-2026-45409",
+                "GHSA-65pc-fj4g-8rjx",
+                "PYSEC-2026-215"
+              ],
+              "max_severity": "6.9"
+            }
+          ],
+          "vulnerabilities": [
+            {
+              "id": "PYSEC-2024-60",
+              "summary": null,
+              "aliases": [
+                "CVE-2024-3651",
+                "GHSA-jjg7-2v4v-x38h"
+              ],
+              "affected": [
+                {
+                  "ranges": [
+                    {
+                      "type": "GIT",
+                      "events": [
+                        {
+                          "introduced": "0"
+                        },
+                        {
+                          "fixed": "1d365e17e10d72d0b7876316fc7b9ca0eebdd38d"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "ECOSYSTEM",
+                      "events": [
+                        {
+                          "introduced": "0.1"
+                        },
+                        {
+                          "fixed": "3.7"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "PYSEC-2026-215",
+              "summary": null,
+              "aliases": [
+                "CVE-2026-45409",
+                "GHSA-65pc-fj4g-8rjx"
+              ],
+              "affected": [
+                {
+                  "ranges": [
+                    {
+                      "type": "ECOSYSTEM",
+                      "events": [
+                        {
+                          "introduced": "0"
+                        },
+                        {
+                          "fixed": "3.15"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "GHSA-65pc-fj4g-8rjx",
+              "summary": "Internationalized Domain Names in Applications (IDNA): Specially crafted inputs to idna.encode() can bypass CVE-2024-3651 fix",
+              "aliases": [
+                "CVE-2026-45409",
+                "PYSEC-2026-215"
+              ],
+              "affected": [
+                {
+                  "ranges": [
+                    {
+                      "type": "ECOSYSTEM",
+                      "events": [
+                        {
+                          "introduced": "0"
+                        },
+                        {
+                          "fixed": "3.15"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "GHSA-jjg7-2v4v-x38h",
+              "summary": "Internationalized Domain Names in Applications (IDNA) vulnerable to denial of service from specially crafted inputs to idna.encode",
+              "aliases": [
+                "CVE-2024-3651",
+                "PYSEC-2024-60"
+              ],
+              "affected": [
+                {
+                  "ranges": [
+                    {
+                      "type": "ECOSYSTEM",
+                      "events": [
+                        {
+                          "introduced": "0"
+                        },
+                        {
+                          "fixed": "3.7"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "package": {
+            "name": "urllib3",
+            "version": "1.23.0",
+            "ecosystem": "PyPI"
+          },
+          "groups": [
+            {
+              "ids": [
+                "PYSEC-2019-132",
+                "GHSA-r64q-w8jr-g9qp"
+              ],
+              "aliases": [
+                "CVE-2019-11236",
+                "GHSA-r64q-w8jr-g9qp",
+                "PYSEC-2019-132"
+              ],
+              "max_severity": "6.1"
+            },
+            {
+              "ids": [
+                "PYSEC-2019-133",
+                "GHSA-mh33-7rrq-662w"
+              ],
+              "aliases": [
+                "CVE-2019-11324",
+                "GHSA-mh33-7rrq-662w",
+                "PYSEC-2019-133"
+              ],
+              "max_severity": "8.7"
+            },
+            {
+              "ids": [
+                "PYSEC-2020-148",
+                "GHSA-wqvq-5m8c-6g24"
+              ],
+              "aliases": [
+                "CVE-2020-26137",
+                "GHSA-wqvq-5m8c-6g24",
+                "PYSEC-2020-148"
+              ],
+              "max_severity": "6.9"
+            },
+            {
+              "ids": [
+                "PYSEC-2023-192",
+                "GHSA-v845-jxx5-vc9f"
+              ],
+              "aliases": [
+                "CVE-2023-43804",
+                "GHSA-v845-jxx5-vc9f",
+                "PYSEC-2023-192"
+              ],
+              "max_severity": "8.1"
+            },
+            {
+              "ids": [
+                "PYSEC-2023-207",
+                "GHSA-gwvm-45gx-3cf8"
+              ],
+              "aliases": [
+                "CVE-2018-25091",
+                "GHSA-gwvm-45gx-3cf8",
+                "PYSEC-2023-207"
+              ],
+              "max_severity": "6.1"
+            },
+            {
+              "ids": [
+                "PYSEC-2023-212",
+                "GHSA-g4mx-q9vg-27p4"
+              ],
+              "aliases": [
+                "CVE-2023-45803",
+                "GHSA-g4mx-q9vg-27p4",
+                "PYSEC-2023-212"
+              ],
+              "max_severity": "5.7"
+            },
+            {
+              "ids": [
+                "PYSEC-2026-141",
+                "GHSA-qccp-gfcp-xxvc"
+              ],
+              "aliases": [
+                "CVE-2026-44431",
+                "GHSA-qccp-gfcp-xxvc",
+                "PYSEC-2026-141"
+              ],
+              "max_severity": "8.2"
+            },
+            {
+              "ids": [
+                "PYSEC-2026-1994",
+                "GHSA-2xpw-w6gg-jr37"
+              ],
+              "aliases": [
+                "CVE-2025-66471",
+                "GHSA-2xpw-w6gg-jr37",
+                "PYSEC-2026-1994"
+              ],
+              "max_severity": "8.9"
+            },
+            {
+              "ids": [
+                "PYSEC-2026-1995",
+                "GHSA-34jh-p97f-mpxf"
+              ],
+              "aliases": [
+                "CVE-2024-37891",
+                "GHSA-34jh-p97f-mpxf",
+                "PYSEC-2026-1995"
+              ],
+              "max_severity": "4.4"
+            },
+            {
+              "ids": [
+                "PYSEC-2026-1996",
+                "GHSA-38jv-5279-wg99"
+              ],
+              "aliases": [
+                "CVE-2026-21441",
+                "GHSA-38jv-5279-wg99",
+                "PYSEC-2026-1996"
+              ],
+              "max_severity": "8.9"
+            },
+            {
+              "ids": [
+                "PYSEC-2026-1999",
+                "GHSA-pq67-6m6q-mj2v"
+              ],
+              "aliases": [
+                "CVE-2025-50181",
+                "GHSA-pq67-6m6q-mj2v",
+                "PYSEC-2026-1999"
+              ],
+              "max_severity": "5.3"
+            },
+            {
+              "ids": [
+                "GHSA-vxq7-64xx-v4gw"
+              ],
+              "aliases": [
+                "CVE-2026-97689",
+                "GHSA-vxq7-64xx-v4gw"
+              ],
+              "max_severity": "8.9"
+            }
+          ],
+          "vulnerabilities": [
+            {
+              "id": "PYSEC-2019-132",
+              "summary": null,
+              "aliases": [
+                "CVE-2019-11236",
+                "GHSA-r64q-w8jr-g9qp"
+              ],
+              "affected": [
+                {
+                  "ranges": [
+                    {
+                      "type": "ECOSYSTEM",
+                      "events": [
+                        {
+                          "introduced": "0"
+                        },
+                        {
+                          "fixed": "1.24.3"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "PYSEC-2019-133",
+              "summary": null,
+              "aliases": [
+                "CVE-2019-11324",
+                "GHSA-mh33-7rrq-662w"
+              ],
+              "affected": [
+                {
+                  "ranges": [
+                    {
+                      "type": "ECOSYSTEM",
+                      "events": [
+                        {
+                          "introduced": "0"
+                        },
+                        {
+                          "fixed": "1.24.2"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "PYSEC-2020-148",
+              "summary": null,
+              "aliases": [
+                "CVE-2020-26137",
+                "GHSA-wqvq-5m8c-6g24"
+              ],
+              "affected": [
+                {
+                  "ranges": [
+                    {
+                      "type": "GIT",
+                      "events": [
+                        {
+                          "introduced": "0"
+                        },
+                        {
+                          "fixed": "1dd69c5c5982fae7c87a620d487c2ebf7a6b436b"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "ECOSYSTEM",
+                      "events": [
+                        {
+                          "introduced": "0"
+                        },
+                        {
+                          "fixed": "1.25.9"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "PYSEC-2023-192",
+              "summary": null,
+              "aliases": [
+                "CVE-2023-43804",
+                "GHSA-v845-jxx5-vc9f"
+              ],
+              "affected": [
+                {
+                  "ranges": [
+                    {
+                      "type": "GIT",
+                      "events": [
+                        {
+                          "introduced": "0"
+                        },
+                        {
+                          "fixed": "644124ecd0b6e417c527191f866daa05a5a2056d"
+                        },
+                        {
+                          "fixed": "01220354d389cd05474713f8c982d05c9b17aafb"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "ECOSYSTEM",
+                      "events": [
+                        {
+                          "introduced": "2.0.0"
+                        },
+                        {
+                          "fixed": "2.0.6"
+                        },
+                        {
+                          "introduced": "0"
+                        },
+                        {
+                          "fixed": "1.26.17"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "PYSEC-2023-207",
+              "summary": null,
+              "aliases": [
+                "CVE-2018-25091",
+                "GHSA-gwvm-45gx-3cf8"
+              ],
+              "affected": [
+                {
+                  "ranges": [
+                    {
+                      "type": "GIT",
+                      "events": [
+                        {
+                          "introduced": "0"
+                        },
+                        {
+                          "fixed": "adb358f8e06865406d1f05e581a16cbea2136fbc"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "ECOSYSTEM",
+                      "events": [
+                        {
+                          "introduced": "0"
+                        },
+                        {
+                          "fixed": "1.24.2"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "PYSEC-2023-212",
+              "summary": null,
+              "aliases": [
+                "CVE-2023-45803",
+                "GHSA-g4mx-q9vg-27p4"
+              ],
+              "affected": [
+                {
+                  "ranges": [
+                    {
+                      "type": "GIT",
+                      "events": [
+                        {
+                          "introduced": "0"
+                        },
+                        {
+                          "fixed": "4e98d57809dacab1cbe625fddeec1a290c478ea9"
+                        }
+                      ]
+                    },
+                    {
+                      "type": "ECOSYSTEM",
+                      "events": [
+                        {
+                          "introduced": "2.0.0"
+                        },
+                        {
+                          "fixed": "2.0.7"
+                        },
+                        {
+                          "introduced": "0"
+                        },
+                        {
+                          "fixed": "1.26.18"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "PYSEC-2026-141",
+              "summary": null,
+              "aliases": [
+                "CVE-2026-44431",
+                "GHSA-qccp-gfcp-xxvc"
+              ],
+              "affected": [
+                {
+                  "ranges": [
+                    {
+                      "type": "ECOSYSTEM",
+                      "events": [
+                        {
+                          "introduced": "1.23"
+                        },
+                        {
+                          "fixed": "2.7.0"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "PYSEC-2026-1994",
+              "summary": "urllib3 streaming API improperly handles highly compressed data",
+              "aliases": [
+                "CVE-2025-66471",
+                "GHSA-2xpw-w6gg-jr37"
+              ],
+              "affected": [
+                {
+                  "ranges": [
+                    {
+                      "type": "ECOSYSTEM",
+                      "events": [
+                        {
+                          "introduced": "1.0"
+                        },
+                        {
+                          "fixed": "2.6.0"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "PYSEC-2026-1995",
+              "summary": "urllib3's Proxy-Authorization request header isn't stripped during cross-origin redirects",
+              "aliases": [
+                "CVE-2024-37891",
+                "GHSA-34jh-p97f-mpxf"
+              ],
+              "affected": [
+                {
+                  "ranges": [
+                    {
+                      "type": "ECOSYSTEM",
+                      "events": [
+                        {
+                          "introduced": "0"
+                        },
+                        {
+                          "fixed": "1.26.19"
+                        },
+                        {
+                          "introduced": "2.0.0"
+                        },
+                        {
+                          "fixed": "2.2.2"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "PYSEC-2026-1996",
+              "summary": "Decompression-bomb safeguards bypassed when following HTTP redirects (streaming API)",
+              "aliases": [
+                "CVE-2026-21441",
+                "GHSA-38jv-5279-wg99"
+              ],
+              "affected": [
+                {
+                  "ranges": [
+                    {
+                      "type": "ECOSYSTEM",
+                      "events": [
+                        {
+                          "introduced": "1.22"
+                        },
+                        {
+                          "fixed": "2.6.3"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "PYSEC-2026-1999",
+              "summary": "urllib3 redirects are not disabled when retries are disabled on PoolManager instantiation",
+              "aliases": [
+                "CVE-2025-50181",
+                "GHSA-pq67-6m6q-mj2v"
+              ],
+              "affected": [
+                {
+                  "ranges": [
+                    {
+                      "type": "ECOSYSTEM",
+                      "events": [
+                        {
+                          "introduced": "0"
+                        },
+                        {
+                          "fixed": "2.5.0"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "GHSA-2xpw-w6gg-jr37",
+              "summary": "urllib3 streaming API improperly handles highly compressed data",
+              "aliases": [
+                "CVE-2025-66471",
+                "PYSEC-2026-1994"
+              ],
+              "affected": [
+                {
+                  "ranges": [
+                    {
+                      "type": "ECOSYSTEM",
+                      "events": [
+                        {
+                          "introduced": "1.0"
+                        },
+                        {
+                          "fixed": "2.6.0"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "GHSA-34jh-p97f-mpxf",
+              "summary": "urllib3's Proxy-Authorization request header isn't stripped during cross-origin redirects",
+              "aliases": [
+                "CVE-2024-37891",
+                "PYSEC-2026-1995"
+              ],
+              "affected": [
+                {
+                  "ranges": [
+                    {
+                      "type": "ECOSYSTEM",
+                      "events": [
+                        {
+                          "introduced": "0"
+                        },
+                        {
+                          "fixed": "1.26.19"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "ranges": [
+                    {
+                      "type": "ECOSYSTEM",
+                      "events": [
+                        {
+                          "introduced": "2.0.0"
+                        },
+                        {
+                          "fixed": "2.2.2"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "GHSA-38jv-5279-wg99",
+              "summary": "Decompression-bomb safeguards bypassed when following HTTP redirects (streaming API)",
+              "aliases": [
+                "CVE-2026-21441",
+                "PYSEC-2026-1996"
+              ],
+              "affected": [
+                {
+                  "ranges": [
+                    {
+                      "type": "ECOSYSTEM",
+                      "events": [
+                        {
+                          "introduced": "1.22"
+                        },
+                        {
+                          "fixed": "2.6.3"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "GHSA-g4mx-q9vg-27p4",
+              "summary": "urllib3's request body not stripped after redirect from 303 status changes request method to GET",
+              "aliases": [
+                "CVE-2023-45803",
+                "PYSEC-2023-212"
+              ],
+              "affected": [
+                {
+                  "ranges": [
+                    {
+                      "type": "ECOSYSTEM",
+                      "events": [
+                        {
+                          "introduced": "2.0.0"
+                        },
+                        {
+                          "fixed": "2.0.7"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "ranges": [
+                    {
+                      "type": "ECOSYSTEM",
+                      "events": [
+                        {
+                          "introduced": "0"
+                        },
+                        {
+                          "fixed": "1.26.18"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "GHSA-gwvm-45gx-3cf8",
+              "summary": "Authorization Header forwarded on redirect",
+              "aliases": [
+                "CVE-2018-25091",
+                "PYSEC-2023-207"
+              ],
+              "affected": [
+                {
+                  "ranges": [
+                    {
+                      "type": "ECOSYSTEM",
+                      "events": [
+                        {
+                          "introduced": "0"
+                        },
+                        {
+                          "fixed": "1.24.2"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "GHSA-mh33-7rrq-662w",
+              "summary": "Improper Certificate Validation in urllib3",
+              "aliases": [
+                "CVE-2019-11324",
+                "PYSEC-2019-133"
+              ],
+              "affected": [
+                {
+                  "ranges": [
+                    {
+                      "type": "ECOSYSTEM",
+                      "events": [
+                        {
+                          "introduced": "0"
+                        },
+                        {
+                          "fixed": "1.24.2"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "GHSA-pq67-6m6q-mj2v",
+              "summary": "urllib3 redirects are not disabled when retries are disabled on PoolManager instantiation",
+              "aliases": [
+                "CVE-2025-50181",
+                "PYSEC-2026-1999"
+              ],
+              "affected": [
+                {
+                  "ranges": [
+                    {
+                      "type": "ECOSYSTEM",
+                      "events": [
+                        {
+                          "introduced": "0"
+                        },
+                        {
+                          "fixed": "2.5.0"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "GHSA-qccp-gfcp-xxvc",
+              "summary": "urllib3: Sensitive headers forwarded across origins in proxied low-level redirects",
+              "aliases": [
+                "CVE-2026-44431",
+                "PYSEC-2026-141"
+              ],
+              "affected": [
+                {
+                  "ranges": [
+                    {
+                      "type": "ECOSYSTEM",
+                      "events": [
+                        {
+                          "introduced": "1.23"
+                        },
+                        {
+                          "fixed": "2.7.0"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "GHSA-r64q-w8jr-g9qp",
+              "summary": "Improper Neutralization of CRLF Sequences in urllib3 library for Python",
+              "aliases": [
+                "CVE-2019-11236",
+                "PYSEC-2019-132"
+              ],
+              "affected": [
+                {
+                  "ranges": [
+                    {
+                      "type": "ECOSYSTEM",
+                      "events": [
+                        {
+                          "introduced": "0"
+                        },
+                        {
+                          "fixed": "1.24.3"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "GHSA-v845-jxx5-vc9f",
+              "summary": "`Cookie` HTTP header isn't stripped on cross-origin redirects",
+              "aliases": [
+                "CVE-2023-43804",
+                "PYSEC-2023-192"
+              ],
+              "affected": [
+                {
+                  "ranges": [
+                    {
+                      "type": "ECOSYSTEM",
+                      "events": [
+                        {
+                          "introduced": "2.0.0"
+                        },
+                        {
+                          "fixed": "2.0.6"
+                        }
+                      ]
+                    }
+                  ]
+                },
+                {
+                  "ranges": [
+                    {
+                      "type": "ECOSYSTEM",
+                      "events": [
+                        {
+                          "introduced": "0"
+                        },
+                        {
+                          "fixed": "1.26.17"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "GHSA-vxq7-64xx-v4gw",
+              "summary": "urllib3: HTTPResponse.stream()/read_chunked() buffers an unbounded chunk-size line into memory",
+              "aliases": [
+                "CVE-2026-97689"
+              ],
+              "affected": [
+                {
+                  "ranges": [
+                    {
+                      "type": "ECOSYSTEM",
+                      "events": [
+                        {
+                          "introduced": "1.10.3"
+                        },
+                        {
+                          "fixed": "2.8.0"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            },
+            {
+              "id": "GHSA-wqvq-5m8c-6g24",
+              "summary": "CRLF injection in urllib3",
+              "aliases": [
+                "CVE-2020-26137",
+                "PYSEC-2020-148"
+              ],
+              "affected": [
+                {
+                  "ranges": [
+                    {
+                      "type": "ECOSYSTEM",
+                      "events": [
+                        {
+                          "introduced": "0"
+                        },
+                        {
+                          "fixed": "1.25.9"
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

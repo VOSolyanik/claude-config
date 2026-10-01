@@ -1,0 +1,661 @@
+#!/bin/bash
+# claude-config — connects this repo to ~/.claude with per-item symlinks and a merged settings.json.
+# Must run on macOS system bash 3.2 with BSD userland; the only dependency is jq.
+# Exit codes: 0 ok, 1 differences found, 2 usage or manifest error, 3 refused by an invariant.
+set -u
+
+REPO="$(cd "$(dirname "$0")/.." && pwd -P)"
+PROFILE="base"
+CMD=""
+DRY_RUN=0
+DISCARD_LIVE=0
+RELINK=0
+YES=0
+# No default remotes: this repo is meant to be shared, and the hub belongs to whoever installs it.
+CONFIG_REMOTE="${CLAUDE_CONFIG_REMOTE_CONFIG:-}"
+PERSONAL_REMOTE="${CLAUDE_CONFIG_REMOTE_PERSONAL:-}"
+
+die() { echo "claude-config: $*" >&2; exit 2; }
+
+usage() {
+  echo "usage: claude-config <status|link|apply|diff|pull|unlink|sync|install> [--profile <name>] [--dry-run] [--discard-live] [--relink] [--yes] [--config-remote <url>] [--personal-remote <url>]" >&2
+  exit 2
+}
+
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --profile) [ $# -ge 2 ] || usage; PROFILE="$2"; shift 2 ;;
+    --dry-run) DRY_RUN=1; shift ;;
+    --discard-live) DISCARD_LIVE=1; shift ;;
+    --relink) RELINK=1; shift ;;
+    --yes) YES=1; shift ;;
+    --config-remote) [ $# -ge 2 ] || usage; CONFIG_REMOTE="$2"; shift 2 ;;
+    --personal-remote) [ $# -ge 2 ] || usage; PERSONAL_REMOTE="$2"; shift 2 ;;
+    status|link|apply|diff|pull|unlink|sync|install) [ -z "$CMD" ] || usage; CMD="$1"; shift ;;
+    *) usage ;;
+  esac
+done
+[ -n "$CMD" ] || usage
+
+# Symlinks and settings always come from the live clones under $LIVE_ROOT, never from a working copy:
+# a change reaches ~/.claude only after it was committed, pushed and pulled into the live clone.
+LIVE_ROOT="${CLAUDE_CONFIG_LIVE_ROOT:-$HOME/tools}"
+case "$LIVE_ROOT/" in "$HOME/dev/"*) die "live root must not be inside ~/dev: $LIVE_ROOT" ;; esac
+DEV_ROOT="${CLAUDE_CONFIG_DEV_ROOT:-$HOME/dev}"
+GITLEAKS="${CLAUDE_CONFIG_GITLEAKS:-gitleaks}"
+CONFIG_LIVE="$LIVE_ROOT/claude-config"
+PERSONAL_LIVE="$LIVE_ROOT/claude-personal"
+
+MANIFEST="$CONFIG_LIVE/profiles/$PROFILE/links.txt"
+PERSONAL_MANIFEST="$PERSONAL_LIVE/links.txt"
+LIVE_SETTINGS="$HOME/.claude/settings.json"
+STATE_DIR="$HOME/.local/state/claude-config"
+BACKUP_DIR="$STATE_DIR/backups/$(date +%Y%m%d-%H%M%S)"
+# Three layers, later wins: base (claude-config) -> personal (claude-personal) -> machine (not in git).
+BASE_SETTINGS="$CONFIG_LIVE/global/settings.base.json"
+PERSONAL_SETTINGS="$PERSONAL_LIVE/settings.personal.json"
+MACHINE_SETTINGS="$HOME/.claude/settings.machine.json"
+# What the last successful apply wrote. Lets us tell "the repo moved ahead" from "Claude Code edited the live file".
+APPLIED_SNAPSHOT="$STATE_DIR/applied/settings.json"
+
+# Manifest entries, filled by load_manifest: parallel arrays of absolute source and absolute target.
+SRCS=()
+TARGETS=()
+
+# load_manifest <manifest file> <repo root>
+load_manifest() {
+  local manifest="$1" root="$2" line src target extra lineno=0
+  [ -f "$manifest" ] || die "manifest not found: $manifest"
+  while IFS= read -r line || [ -n "$line" ]; do
+    lineno=$((lineno + 1))
+    case "$line" in ''|'#'*) continue ;; esac
+    read -r src target extra <<EOF
+$line
+EOF
+    [ -n "$src" ] || continue
+    [ -n "${target:-}" ] && [ -z "${extra:-}" ] || die "$manifest:$lineno: expected '<source> <target>'"
+    case "$src" in /*|*..*) die "$manifest:$lineno: source must be a path inside the repo" ;; esac
+    case "$target" in *..*) die "$manifest:$lineno: target must not contain '..'" ;; esac
+    case "$target" in
+      '~/.claude/'?*|'~/.config/claude-kit'|'~/.config/claude-kit/'?*) ;;
+      *) die "$manifest:$lineno: target must be under ~/.claude/ or ~/.config/claude-kit" ;;
+    esac
+    SRCS[${#SRCS[@]}]="$root/$src"
+    TARGETS[${#TARGETS[@]}]="$HOME/${target#\~/}"
+  done < "$manifest"
+}
+
+load_manifests() {
+  load_manifest "$MANIFEST" "$CONFIG_LIVE"
+  if [ -f "$PERSONAL_MANIFEST" ]; then load_manifest "$PERSONAL_MANIFEST" "$PERSONAL_LIVE"; fi
+}
+
+# OK | REPLACED | MISSING | FOREIGN | SRC-MISSING
+entry_state() {
+  local src="$1" target="$2"
+  if [ ! -e "$src" ]; then echo "SRC-MISSING"; return; fi
+  if [ -L "$target" ]; then
+    if [ "$(readlink "$target")" = "$src" ]; then echo "OK"; else echo "FOREIGN"; fi
+    return
+  fi
+  if [ -e "$target" ]; then echo "REPLACED"; else echo "MISSING"; fi
+}
+
+show() { echo "~/${1#"$HOME"/}"; }
+
+in_manifest() {
+  local i
+  for ((i = 0; i < ${#TARGETS[@]}; i++)); do [ "${TARGETS[$i]}" = "$1" ] && return 0; done
+  return 1
+}
+
+# Symlinks into this repo that the manifest no longer lists, e.g. after an entry was removed.
+# Scans ~/.claude, its skills/rules/agents dirs, ~/.config and the parent dir of every manifest target.
+orphan_links() {
+  local i dirs link
+  dirs="$(
+    printf '%s\n' "$HOME/.claude" "$HOME/.claude/skills" "$HOME/.claude/rules" "$HOME/.claude/agents" "$HOME/.config"
+    for ((i = 0; i < ${#TARGETS[@]}; i++)); do dirname "${TARGETS[$i]}"; done
+  )"
+  echo "$dirs" | sort -u | while IFS= read -r dir; do
+    [ -d "$dir" ] || continue
+    find "$dir" -maxdepth 1 -type l | while IFS= read -r link; do
+      case "$(readlink "$link")" in "$CONFIG_LIVE"/*|"$PERSONAL_LIVE"/*) in_manifest "$link" || echo "$link" ;; esac
+    done
+  done
+}
+
+same_content() {
+  if [ -d "$1" ] && [ -d "$2" ]; then diff -rq "$1" "$2" >/dev/null 2>&1; else cmp -s "$1" "$2"; fi
+}
+
+# Move an existing file or directory out of the way. Backups never stay inside ~/.claude:
+# a copy of a skill directory next to the original would load as a second skill.
+backup() {
+  local path="$1" dest="$BACKUP_DIR/${1#"$HOME"/}" n=1
+  while [ -e "$dest" ] || [ -L "$dest" ]; do dest="$BACKUP_DIR/${1#"$HOME"/}.$n"; n=$((n + 1)); done
+  mkdir -p "$(dirname "$dest")" && mv "$path" "$dest" && echo "backed up   $(show "$path") -> $(show "$dest")"
+}
+
+cmd_link() {
+  local i state src target refused=0
+  # First pass: decide everything, change nothing. One refusal stops the whole run.
+  for ((i = 0; i < ${#SRCS[@]}; i++)); do
+    src="${SRCS[$i]}"; target="${TARGETS[$i]}"
+    state="$(entry_state "${SRCS[$i]}" "$target")"
+    case "$state" in
+      SRC-MISSING) die "source is missing in the repo: ${SRCS[$i]}" ;;
+      FOREIGN) echo "refused: $(show "$target") is a symlink to $(readlink "$target"), not into this repo" >&2; refused=1 ;;
+      REPLACED)
+        if ! same_content "$src" "$target"; then
+          echo "refused: $(show "$target") differs from the repo; run 'claude-config pull' first" >&2; refused=1
+        fi ;;
+    esac
+  done
+  [ "$refused" -eq 0 ] || exit 3
+
+  for ((i = 0; i < ${#SRCS[@]}; i++)); do
+    src="${SRCS[$i]}"; target="${TARGETS[$i]}"
+    state="$(entry_state "${SRCS[$i]}" "$target")"
+    [ "$state" = "OK" ] && continue
+    if [ "$DRY_RUN" -eq 1 ]; then
+      [ "$state" = "REPLACED" ] && echo "would back up $(show "$target")"
+      echo "would link  $(show "$target") -> $src"
+      continue
+    fi
+    if [ "$state" = "REPLACED" ]; then backup "$target" || exit 1; fi
+    mkdir -p "$(dirname "$target")" && ln -s "$src" "$target" || exit 1
+    echo "linked      $(show "$target")"
+  done
+}
+
+# --- settings.json: merged from the repo, never symlinked (Claude Code writes to it atomically) ---
+
+# Permission lists are sets: order and duplicates carry no meaning, so comparisons ignore them.
+JQ_NORM='
+  def norm:
+    if (.permissions | type) == "object" then
+      .permissions |= with_entries(
+        if (.key == "allow" or .key == "ask" or .key == "deny") and (.value | type) == "array"
+        then .value |= unique else . end)
+    else . end;'
+
+valid_json() { jq -e . "$1" >/dev/null 2>&1; }
+
+# merge2(a; b): b layered over a. Objects merge recursively and scalars from b win; permission lists
+# and hooks.<Event> arrays are united (hooks deduplicated by matcher + commands); other arrays are replaced.
+JQ_MERGE='
+  def union($a; $b): reduce (($a // []) + ($b // []))[] as $x ([]; if index([$x]) then . else . + [$x] end);
+  def hkey: (.matcher // "") + "\u0000" + ([.hooks[]?.command] | join("\u0000"));
+  def hunion($a; $b): reduce (($a // []) + ($b // []))[] as $e ([]; if any(.[]; hkey == ($e | hkey)) then . else . + [$e] end);
+  def kmerge($a; $b):
+    if ($a | type) == "object" and ($b | type) == "object"
+    then reduce ($b | keys_unsorted[]) as $k ($a; .[$k] = (if ($a | has($k)) then kmerge($a[$k]; $b[$k]) else $b[$k] end))
+    else $b end;
+  def merge2($a; $b):
+    kmerge($a; $b)
+    | reduce ("allow", "ask", "deny") as $k (.;
+        if ($a.permissions[$k]? != null) or ($b.permissions[$k]? != null)
+        then .permissions[$k] = union($a.permissions[$k]?; $b.permissions[$k]?) else . end)
+    | if ($a.hooks? != null) or ($b.hooks? != null)
+      then reduce ((($a.hooks // {}) + ($b.hooks // {})) | keys_unsorted[]) as $ev (.;
+             .hooks[$ev] = hunion($a.hooks[$ev]?; $b.hooks[$ev]?))
+      else . end;'
+
+# layer <file>: the file if present, {} if absent; dies on invalid JSON.
+layer() {
+  if [ ! -f "$1" ]; then echo '{}'; return; fi
+  valid_json "$1" || die "settings layer is not valid JSON: $1"
+  cat "$1"
+}
+
+# base -> personal -> machine. Prints the merged document.
+merged_settings() {
+  local personal machine
+  [ -f "$BASE_SETTINGS" ] || die "base settings not found: $BASE_SETTINGS"
+  valid_json "$BASE_SETTINGS" || die "base settings is not valid JSON: $BASE_SETTINGS"
+  personal="$(layer "$PERSONAL_SETTINGS")" || exit 2
+  machine="$(layer "$MACHINE_SETTINGS")" || exit 2
+  jq --argjson p "$personal" --argjson m "$machine" "$JQ_MERGE merge2(merge2(.; \$p); \$m)" "$BASE_SETTINGS"
+}
+
+# norm_of <file|-> : canonical single-line form for comparison
+norm_of() { jq -S -c "$JQ_NORM norm" "$@"; }
+
+# Deny rules present in the first document and absent from the second, one per line.
+deny_lost() {
+  jq -r -n --argjson have "$1" --argjson want "$2" \
+    '(($have.permissions.deny? // []) - ($want.permissions.deny? // []))[]'
+}
+
+# missing | is-symlink | invalid | deny-loss | in sync | pending | drift
+settings_state() {
+  local merged live
+  if [ -L "$LIVE_SETTINGS" ]; then echo "is-symlink"; return; fi
+  if [ ! -e "$LIVE_SETTINGS" ]; then echo "missing"; return; fi
+  valid_json "$LIVE_SETTINGS" || { echo "invalid"; return; }
+  merged="$(merged_settings)" || exit 2
+  live="$(cat "$LIVE_SETTINGS")"
+  if [ -n "$(deny_lost "$live" "$merged")" ]; then echo "deny-loss"; return; fi
+  if [ "$(norm_of "$LIVE_SETTINGS")" = "$(echo "$merged" | norm_of)" ]; then echo "in sync"; return; fi
+  if [ -f "$APPLIED_SNAPSHOT" ] && [ "$(norm_of "$LIVE_SETTINGS")" = "$(norm_of "$APPLIED_SNAPSHOT")" ]; then
+    echo "pending"
+  else
+    echo "drift"
+  fi
+}
+
+record_snapshot() { mkdir -p "$(dirname "$APPLIED_SNAPSHOT")" && cp "$LIVE_SETTINGS" "$APPLIED_SNAPSHOT"; }
+
+cmd_apply() {
+  local merged state lost tmp
+  merged="$(merged_settings)" || exit 2
+  state="$(settings_state)"
+  case "$state" in
+    is-symlink)
+      echo "refused: $(show "$LIVE_SETTINGS") is a symlink; it must be a regular file" >&2; exit 3 ;;
+    invalid)
+      echo "refused: $(show "$LIVE_SETTINGS") is not valid JSON; fix or remove it first" >&2; exit 3 ;;
+    deny-loss)
+      lost="$(deny_lost "$(cat "$LIVE_SETTINGS")" "$merged")"
+      echo "refused: applying would drop deny rules that are live now:" >&2
+      echo "$lost" | sed 's/^/  /' >&2
+      echo "Deny rules are only ever added by this tool." >&2
+      echo "  If these rules are new in the live file: run 'claude-config pull' to bring them into the repo." >&2
+      echo "  If you are removing them on purpose: delete the same rules from the live file by hand," >&2
+      echo "  check 'claude-config diff', then run 'claude-config apply --discard-live'." >&2
+      exit 3 ;;
+    "in sync")
+      if [ "$DRY_RUN" -eq 0 ]; then
+        [ -f "$APPLIED_SNAPSHOT" ] && cmp -s "$LIVE_SETTINGS" "$APPLIED_SNAPSHOT" || record_snapshot
+      fi
+      echo "settings: already in sync"; return 0 ;;
+    drift)
+      if [ "$DISCARD_LIVE" -eq 0 ]; then
+        echo "refused: $(show "$LIVE_SETTINGS") was changed outside claude-config since the last apply." >&2
+        echo "Run 'claude-config diff' to see the change and 'claude-config pull' to bring it into the repo." >&2
+        exit 3
+      fi ;;
+  esac
+
+  if [ "$DRY_RUN" -eq 1 ]; then
+    echo "would write $(show "$LIVE_SETTINGS") ($state)"
+    return 0
+  fi
+  mkdir -p "$(dirname "$LIVE_SETTINGS")" || exit 1
+  tmp="$LIVE_SETTINGS.claude-config.$$"
+  printf '%s\n' "$merged" > "$tmp" && valid_json "$tmp" || { rm -f "$tmp"; echo "claude-config: merged settings failed validation" >&2; exit 1; }
+  if [ -e "$LIVE_SETTINGS" ]; then
+    local dest="$BACKUP_DIR/${LIVE_SETTINGS#"$HOME"/}"
+    mkdir -p "$(dirname "$dest")" && cp -p "$LIVE_SETTINGS" "$dest" || { rm -f "$tmp"; exit 1; }
+    echo "backed up   $(show "$LIVE_SETTINGS") -> $(show "$dest")"
+  fi
+  mv "$tmp" "$LIVE_SETTINGS" || exit 1
+  record_snapshot
+  echo "applied     $(show "$LIVE_SETTINGS")"
+  echo "Restart Claude Code sessions: hooks and settings are read at session start, so check this change in a new session."
+}
+
+cmd_status() {
+  local i state rc=0 sstate
+  for ((i = 0; i < ${#SRCS[@]}; i++)); do
+    state="$(entry_state "${SRCS[$i]}" "${TARGETS[$i]}")"
+    printf '%-12s %s\n' "$state" "$(show "${TARGETS[$i]}")"
+    [ "$state" = "OK" ] || rc=1
+  done
+  while IFS= read -r link; do
+    [ -n "$link" ] || continue
+    printf '%-12s %s -> %s (not in the manifest; remove it or add it back)\n' "ORPHAN" "$(show "$link")" "$(readlink "$link")"
+    rc=1
+  done <<EOF
+$(orphan_links)
+EOF
+  sstate="$(settings_state)"
+  echo "settings: $sstate"
+  [ "$sstate" = "in sync" ] || rc=1
+  return $rc
+}
+
+# Read-only: what differs between the repo and the live config.
+cmd_diff() {
+  local i src target rc=0 sstate
+  sstate="$(settings_state)"
+  case "$sstate" in
+    missing|"in sync") ;;
+    is-symlink|invalid) echo "settings: $sstate"; rc=1 ;;
+    *)
+      echo "settings: $sstate"
+      diff -u -L "repo (base + machine)" -L "live $(show "$LIVE_SETTINGS")" \
+        <(merged_settings | jq -S "$JQ_NORM norm") <(jq -S "$JQ_NORM norm" "$LIVE_SETTINGS")
+      rc=1 ;;
+  esac
+  for ((i = 0; i < ${#SRCS[@]}; i++)); do
+    src="${SRCS[$i]}"; target="${TARGETS[$i]}"
+    [ "$(entry_state "${SRCS[$i]}" "$target")" = "REPLACED" ] || continue
+    same_content "$src" "$target" && continue
+    diff -ru "$src" "$target"
+    rc=1
+  done
+  return $rc
+}
+
+# Live settings minus what settings.machine.json contributes: this is what belongs in settings.base.json.
+base_from_live() {
+  local machine='{}'
+  [ -f "$MACHINE_SETTINGS" ] && machine="$(cat "$MACHINE_SETTINGS")"
+  jq --argjson m "$machine" --slurpfile b "$BASE_SETTINGS" '
+    reduce ($m | paths(scalars) | select(all(.[]; type == "string"))) as $p (.; delpaths([$p]))
+    | reduce ("allow", "ask", "deny") as $k (.;
+        if (.permissions[$k]? | type) == "array"
+        then .permissions[$k] -= (($m.permissions[$k]? // []) - ($b[0].permissions[$k]? // []))
+        else . end)
+  ' "$LIVE_SETTINGS"
+}
+
+# overlay($b; $l): the smallest layer $o with merge2($b; $o) == $l, where that is expressible.
+# Keys and values equal to $b are left out; for united lists only the extra elements are kept.
+# A key that $l lacks but $b has cannot be expressed (a layer can only add or override) - the caller
+# detects that by merging the result back and comparing.
+JQ_OVERLAY='
+  def unionpath($path): ($path | length) == 2 and (($path[0] == "permissions" and ($path[1] | IN("allow", "ask", "deny"))) or $path[0] == "hooks");
+  def overlay($b; $l; $path):
+    if ($l | type) == "object" and ($b | type) == "object" then
+      reduce ($l | keys_unsorted[]) as $k ({};
+        if ($b | has($k)) then
+          overlay($b[$k]; $l[$k]; $path + [$k]) as $v | if $v == null then . else .[$k] = $v end
+        else .[$k] = $l[$k] end)
+      | if . == {} then null else . end
+    elif ($l | type) == "array" and ($b | type) == "array" and unionpath($path) then
+      (if $path[0] == "hooks"
+       then [$l[] | . as $e | select(any($b[]; hkey == ($e | hkey)) | not)]
+       else [$l[] | . as $x | select(($b | index([$x])) == null)] end)
+      | if . == [] then null else . end
+    elif $l == $b then null
+    else $l end;'
+
+# personal_from_live: the personal layer that reproduces the live file over base and machine.
+personal_from_live() {
+  local machine
+  machine="$(layer "$MACHINE_SETTINGS")" || exit 2
+  jq -n --slurpfile b "$BASE_SETTINGS" --argjson m "$machine" --slurpfile l "$LIVE_SETTINGS" \
+    "$JQ_MERGE $JQ_OVERLAY overlay(merge2(\$b[0]; \$m); \$l[0]; []) // {}"
+}
+
+# merged_with <personal json>: base -> given personal -> machine.
+merged_with() {
+  local machine
+  machine="$(layer "$MACHINE_SETTINGS")" || exit 2
+  jq --argjson p "$1" --argjson m "$machine" "$JQ_MERGE merge2(merge2(.; \$p); \$m)" "$BASE_SETTINGS"
+}
+
+# pull_personal: write the live file's own changes into settings.personal.json.
+pull_personal() {
+  local old new merged lost differ
+  old="$(layer "$PERSONAL_SETTINGS")" || exit 2
+  new="$(personal_from_live)" || exit 1
+  merged="$(merged_with "$new")" || exit 1
+  if [ "$(echo "$merged" | norm_of)" != "$(norm_of "$LIVE_SETTINGS")" ]; then
+    differ="$(jq -r -n --argjson a "$merged" --slurpfile b "$LIVE_SETTINGS" \
+      '[($a | keys[]), ($b[0] | keys[])] | unique | map(select($a[.] != $b[0][.])) | join(", ")')"
+    echo "refused: the personal layer cannot reproduce the live file (keys: $differ)." >&2
+    echo "A layer can only add or override: a key removed from the live file, or a value the machine layer sets," >&2
+    echo "has to be changed in settings.base.json or ~/.claude/settings.machine.json by hand." >&2
+    exit 3
+  fi
+  lost="$(jq -r -n --argjson old "$old" --argjson new "$new" --slurpfile b "$BASE_SETTINGS" \
+    '(($old.permissions.deny? // []) - ($new.permissions.deny? // []) - ($b[0].permissions.deny? // []))[]')"
+  if [ -n "$lost" ]; then
+    echo "refused: pulling would drop deny rules from settings.personal.json:" >&2
+    echo "$lost" | sed 's/^/  /' >&2
+    echo "Deny rules are only ever added. Restore them in the live file or edit the personal repo by hand." >&2
+    exit 3
+  fi
+  if [ "$DRY_RUN" -eq 1 ]; then
+    echo "would pull  $(show "$LIVE_SETTINGS") -> claude-personal/settings.personal.json"
+  else
+    printf '%s\n' "$(echo "$new" | jq .)" > "$PERSONAL_SETTINGS" || exit 1
+    echo "pulled      $(show "$LIVE_SETTINGS") -> claude-personal/settings.personal.json"
+  fi
+}
+
+# Bring into the repo what Claude Code wrote by itself. Writes only to the repo (plus relinking with --relink).
+cmd_pull() {
+  local i src target state sstate merged new_base lost pulled=0
+  sstate="$(settings_state)"
+  case "$sstate" in
+    drift|deny-loss)
+      merged="$(merged_settings)" || exit 2
+      if [ -f "$APPLIED_SNAPSHOT" ] && [ "$(echo "$merged" | norm_of)" != "$(norm_of "$APPLIED_SNAPSHOT")" ]; then
+        echo "refused: both the repo and $(show "$LIVE_SETTINGS") changed since the last apply." >&2
+        echo "Run 'claude-config diff' and reconcile settings.base.json by hand." >&2
+        exit 3
+      fi
+      if [ -d "$PERSONAL_LIVE" ]; then
+        pull_personal
+        pulled=1
+        sstate=done
+      fi
+    ;;
+  esac
+  case "$sstate" in
+    drift|deny-loss)
+      new_base="$(base_from_live)" || exit 1
+      lost="$(deny_lost "$(cat "$BASE_SETTINGS")" "$new_base")"
+      if [ -n "$lost" ]; then
+        echo "refused: pulling would drop deny rules from settings.base.json:" >&2
+        echo "$lost" | sed 's/^/  /' >&2
+        echo "Deny rules are only ever added. Restore them in the live file or edit the repo by hand." >&2
+        exit 3
+      fi
+      if [ "$DRY_RUN" -eq 1 ]; then
+        echo "would pull  $(show "$LIVE_SETTINGS") -> global/settings.base.json"
+      else
+        printf '%s\n' "$new_base" > "$BASE_SETTINGS" || exit 1
+        echo "pulled      $(show "$LIVE_SETTINGS") -> global/settings.base.json"
+      fi
+      pulled=1 ;;
+    pending) echo "settings: the repo is ahead of the live file; nothing to pull, run 'claude-config apply'" ;;
+    is-symlink|invalid) echo "settings: $sstate; nothing pulled" >&2 ;;
+  esac
+
+  for ((i = 0; i < ${#SRCS[@]}; i++)); do
+    src="${SRCS[$i]}"; target="${TARGETS[$i]}"
+    [ "$(entry_state "${SRCS[$i]}" "$target")" = "REPLACED" ] || continue
+    if ! same_content "$src" "$target"; then
+      if [ "$DRY_RUN" -eq 1 ]; then
+        echo "would pull  $(show "$target") -> ${SRCS[$i]}"
+      else
+        if [ -d "$target" ]; then rm -rf "$src" && cp -Rp "$target" "$src"; else cp -p "$target" "$src"; fi || exit 1
+        echo "pulled      $(show "$target") -> ${SRCS[$i]}"
+      fi
+      pulled=1
+    fi
+    [ "$RELINK" -eq 1 ] || continue
+    if [ "$DRY_RUN" -eq 1 ]; then
+      echo "would back up $(show "$target")"
+      echo "would link  $(show "$target") -> $src"
+    else
+      backup "$target" && ln -s "$src" "$target" || exit 1
+      echo "linked      $(show "$target")"
+    fi
+  done
+  [ "$pulled" -eq 1 ] || echo "nothing to pull"
+  return 0
+}
+
+# Turn every symlink into this repo back into a real copy, so ~/.claude works without the repo.
+cmd_unlink() {
+  local i src target
+  for ((i = 0; i < ${#SRCS[@]}; i++)); do
+    src="${SRCS[$i]}"; target="${TARGETS[$i]}"
+    [ "$(entry_state "${SRCS[$i]}" "$target")" = "OK" ] || continue
+    if [ "$DRY_RUN" -eq 1 ]; then echo "would copy  $src -> $(show "$target")"; continue; fi
+    rm "$target" && cp -Rp "$src" "$target" || exit 1
+    echo "unlinked    $(show "$target")"
+  done
+}
+
+# --- sync: working copies and live clones through the hub -------------------------------------------
+# Nothing is committed or pushed without consent: --yes gives it, a terminal asks, anything else only
+# prints the plan. gitleaks runs before every commit and every push.
+
+REPOS="claude-config claude-personal"
+
+# confirm <question>: 0 if agreed.
+confirm() {
+  [ "$YES" -eq 1 ] && return 0
+  if [ -t 0 ]; then
+    local answer
+    printf '%s [y/N] ' "$1" >&2
+    read -r answer
+    case "$answer" in y|Y|yes|Yes|так|Так|т|Т) return 0 ;; esac
+    return 1
+  fi
+  return 1
+}
+
+show_uncommitted() {
+  local dir="$1" f
+  git -C "$dir" status --short
+  git -C "$dir" --no-pager diff
+  git -C "$dir" ls-files --others --exclude-standard | while IFS= read -r f; do
+    echo "--- new file: $f"
+    head -n 100 "$dir/$f"
+  done
+}
+
+# 1) uncommitted changes in the live clones (memory or writing the agent added through the symlinks)
+sync_live_changes() {
+  local name dir
+  for name in $REPOS; do
+    dir="$LIVE_ROOT/$name"
+    [ -d "$dir/.git" ] || continue
+    [ -n "$(git -C "$dir" status --porcelain)" ] || continue
+    echo "== uncommitted changes in the live clone $(show "$dir")"
+    show_uncommitted "$dir"
+    if ! confirm "Commit and push these changes from $(show "$dir")?"; then PLAN_ONLY=1; continue; fi
+    git -C "$dir" add -A || exit 1
+    if ! "$GITLEAKS" git --pre-commit --staged --redact --no-banner "$dir"; then
+      git -C "$dir" reset -q
+      echo "refused: gitleaks reported possible secrets in $(show "$dir"); nothing was committed." >&2
+      exit 3
+    fi
+    git -C "$dir" commit -qm "sync: changes from the live clone ($(date +%Y-%m-%d))" || exit 1
+    git -C "$dir" push -q || { echo "claude-config: push failed in $(show "$dir")" >&2; exit 1; }
+    echo "pushed      $(show "$dir")"
+  done
+}
+
+# 2) commits in the working copies that the hub does not have yet
+sync_dev_commits() {
+  local name dir
+  for name in $REPOS; do
+    dir="$DEV_ROOT/$name"
+    [ -d "$dir/.git" ] || continue
+    if [ -n "$(git -C "$dir" status --porcelain)" ]; then
+      echo "refused: $(show "$dir") has uncommitted changes; commit or stash them first." >&2
+      exit 3
+    fi
+    if ! git -C "$dir" rev-parse -q --verify '@{u}' >/dev/null 2>&1; then
+      echo "refused: $(show "$dir") has no upstream branch; push it once by hand with -u." >&2
+      exit 3
+    fi
+    git -C "$dir" fetch -q || exit 1
+    if [ -z "$(git -C "$dir" log --oneline '@{u}..HEAD')" ]; then
+      if [ -n "$(git -C "$dir" log --oneline 'HEAD..@{u}')" ]; then
+        echo "note: $(show "$dir") is behind its upstream; run 'git pull' there when convenient."
+      fi
+      continue
+    fi
+    if ! git -C "$dir" merge-base --is-ancestor '@{u}' HEAD; then
+      echo "refused: $(show "$dir") has diverged from its upstream; pull --rebase there first." >&2
+      exit 3
+    fi
+    echo "== commits to push from $(show "$dir")"
+    git -C "$dir" --no-pager log --stat --format='%h %s' '@{u}..HEAD'
+    if ! confirm "Push these commits from $(show "$dir")?"; then PLAN_ONLY=1; continue; fi
+    if ! "$GITLEAKS" git --log-opts='@{u}..HEAD' --redact --no-banner "$dir"; then
+      echo "refused: gitleaks reported possible secrets in the commits of $(show "$dir"); nothing was pushed." >&2
+      exit 3
+    fi
+    git -C "$dir" push -q || { echo "claude-config: push failed in $(show "$dir")" >&2; exit 1; }
+    echo "pushed      $(show "$dir")"
+  done
+}
+
+# 3) live clones follow the hub, fast-forward only
+sync_pull_live() {
+  local name dir
+  for name in $REPOS; do
+    dir="$LIVE_ROOT/$name"
+    [ -d "$dir/.git" ] || continue
+    if ! git -C "$dir" pull -q --ff-only; then
+      echo "claude-config: $(show "$dir") cannot fast-forward to its upstream (it has commits the hub does not); fix it by hand." >&2
+      exit 1
+    fi
+    echo "pulled      $(show "$dir")"
+  done
+}
+
+cmd_sync() {
+  PLAN_ONLY=0
+  sync_live_changes
+  sync_dev_commits
+  if [ "$PLAN_ONLY" -eq 1 ]; then
+    echo
+    echo "Nothing was committed or pushed. Review the changes above, then re-run 'claude-config sync --yes'"
+    echo "(or run it in a terminal to be asked step by step)."
+    exit 1
+  fi
+  sync_pull_live
+  SRCS=()
+  TARGETS=()
+  load_manifests
+  cmd_link
+  cmd_apply
+}
+
+# --- install: a new machine gets both repos twice (working copy + live clone), then link and apply ----
+
+# ensure_clone <remote> <dir>: clone, or accept an existing clone of the same remote; refuse anything else.
+ensure_clone() {
+  local remote="$1" dir="$2" origin
+  if [ -e "$dir" ]; then
+    origin="$(git -C "$dir" remote get-url origin 2>/dev/null)"
+    if [ -d "$dir/.git" ] && [ "$origin" = "$remote" ]; then
+      echo "present     $(show "$dir")"
+      return 0
+    fi
+    echo "refused: $(show "$dir") exists and is not a clone of $remote; move it away first." >&2
+    exit 3
+  fi
+  mkdir -p "$(dirname "$dir")" && git clone -q "$remote" "$dir" || { echo "claude-config: clone of $remote failed" >&2; exit 1; }
+  echo "cloned      $(show "$dir")"
+}
+
+cmd_install() {
+  local root
+  [ -n "$CONFIG_REMOTE" ] && [ -n "$PERSONAL_REMOTE" ] ||
+    die "install needs --config-remote <url> and --personal-remote <url> (or CLAUDE_CONFIG_REMOTE_CONFIG / CLAUDE_CONFIG_REMOTE_PERSONAL)"
+  for root in "$DEV_ROOT" "$LIVE_ROOT"; do
+    ensure_clone "$CONFIG_REMOTE" "$root/claude-config"
+    ensure_clone "$PERSONAL_REMOTE" "$root/claude-personal"
+  done
+  load_manifests
+  cmd_link
+  cmd_apply
+}
+
+case "$CMD" in
+  sync) cmd_sync; exit $? ;;
+  install) cmd_install; exit $? ;;
+esac
+load_manifests
+case "$CMD" in
+  status) cmd_status ;;
+  link) cmd_link ;;
+  apply) cmd_apply ;;
+  diff) cmd_diff ;;
+  pull) cmd_pull ;;
+  unlink) cmd_unlink ;;
+esac
