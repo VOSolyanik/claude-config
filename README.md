@@ -26,7 +26,7 @@ working copy                                     live clone
 | `global/settings.base.json` | base settings layer: permission rules for secrets and destructive commands, hooks from `claude-kit` |
 | `global/skills/<name>/` | general skills → `~/.claude/skills/<name>` |
 | `claude-kit/hooks/` | hooks → `~/.config/claude-kit/hooks` (see below) |
-| `claude-kit/statusline.sh` | two-line coloured status line: dir, branch with staged/modified/untracked counts, model, effort; context bar (yellow/red at 60/80% of `autoCompactWindow`), prompt cache, session $, 5h limit, duration → `~/.config/claude-kit/statusline.sh` |
+| `claude-kit/statusline.sh` | two-line coloured status line: dir, branch with staged/modified/untracked counts, model, effort; context bar against `autoCompactWindow` (full = compaction; yellow/red from 60/80%), prompt cache, session $, 5h limit, duration → `~/.config/claude-kit/statusline.sh` |
 | `profiles/base/links.txt` | manifest: what gets linked where |
 | `tests/` | `run.sh` (the tool), `test_*.py` (hooks, status line), `integration.sh` (real `claude` against a fake API) |
 

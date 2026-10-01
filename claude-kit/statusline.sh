@@ -7,9 +7,10 @@
 # Why: context % catches bloat before compaction; the prompt_cache object (v2.1.251+) and last_miss_cause
 # (v2.1.260+) show cache misses (model/effort/tool changes re-bill the whole context); cost is a client-side
 # list-price estimate. Source: code.claude.com/docs/en/statusline.
-# Context colours: used_percentage is counted against context_window_size (the model's window), while
-# compaction starts at autoCompactWindow. Yellow at 60% and red at 80% of autoCompactWindow, expressed as a
-# share of the window (400k of 1M: 24% / 32%). Only user settings are read for autoCompactWindow.
+# Context: bar and % count the tokens in context (current_usage: input + cache creation + cache read)
+# against the compaction point, so a full bar means compaction. The point is autoCompactWindow from user
+# settings, capped at context_window_size; without it, context_window_size. Payload used_percentage is
+# not used: it is counted against the model window. Yellow from 60%, red from 80%.
 # Runs locally: costs zero model tokens. Keep it fast: one jq and one git process (debounced 300 ms).
 in=$(cat)
 
@@ -22,7 +23,10 @@ fields=$(jq -r --rawfile st "$settings" '
   [ (.model.display_name // "Claude"),
     (.effort.level // ""),
     (.workspace.current_dir // .cwd // ""),
-    (.context_window.used_percentage | int),
+    (.context_window.current_usage
+      | if type == "object"
+        then (.input_tokens // 0) + (.cache_creation_input_tokens // 0) + (.cache_read_input_tokens // 0) | int
+        else "" end),
     (.context_window.context_window_size | int),
     (($st | try fromjson catch {}) | .autoCompactWindow? | int),
     (if .prompt_cache then (.prompt_cache.hit_ratio // 0) * 100 | int else "" end),
@@ -33,7 +37,7 @@ fields=$(jq -r --rawfile st "$settings" '
     (.cost.total_duration_ms | int)
   ] | join("\u001f")' <<<"$in" 2>/dev/null) || { printf '%s\n' "[claude]"; exit 0; }
 
-IFS=$US read -r model effort cwd ctx size acw hit cold causes cents five dur <<<"$fields"
+IFS=$US read -r model effort cwd used size acw hit cold causes cents five dur <<<"$fields"
 
 CSI=$'\033['
 RST="${CSI}0m"
@@ -85,17 +89,16 @@ line1=$out
 
 # ---- line 2
 out=""
+base=${acw:-$size}
+[ -n "$acw" ] && [ -n "$size" ] && [ "$acw" -gt "$size" ] && base=$size
+ctx=""
+if [ -n "$used" ] && [ -n "$base" ] && [ "$base" -gt 0 ]; then
+  ctx=$((used * 100 / base))
+  [ "$ctx" -gt 100 ] && ctx=100
+fi
 if [ -n "$ctx" ]; then
-  warn=60 crit=80
-  if [ -n "$size" ] && [ "$size" -gt 0 ]; then
-    window=${acw:-$size}
-    [ "$window" -gt "$size" ] && window=$size
-    warn=$((60 * window / size))
-    crit=$((80 * window / size))
-  fi
-  level "$ctx" "$warn" "$crit"
+  level "$ctx" 60 80
   filled=$((ctx * 10 / 100))
-  [ "$filled" -gt 10 ] && filled=10
   bar="" i=0
   while [ "$i" -lt "$filled" ]; do
     if [ "$i" -lt 2 ]; then bar="${bar}█"; else bar="${bar}⣿"; fi

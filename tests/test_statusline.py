@@ -17,7 +17,17 @@ GREEN, YELLOW, RED, GRAY = "78", "220", "196", "240"
 FULL = {
     "model": {"display_name": "Opus 5.5"},
     "effort": {"level": "high"},
-    "context_window": {"used_percentage": 30, "context_window_size": 1_000_000},
+    # 120k used: 12% of the 1M window, 30% of the 400k autoCompactWindow the status line counts against
+    "context_window": {
+        "used_percentage": 12,
+        "context_window_size": 1_000_000,
+        "current_usage": {
+            "input_tokens": 1_000,
+            "cache_creation_input_tokens": 19_000,
+            "cache_read_input_tokens": 100_000,
+            "output_tokens": 5_000,
+        },
+    },
     "prompt_cache": {
         "hit_ratio": 0.978,
         "warm": True,
@@ -76,8 +86,11 @@ class StatuslineTest(unittest.TestCase):
     def with_dir(self, d=None, **extra):
         return {**FULL, "workspace": {"current_dir": d or self.repo}, **extra}
 
-    def ctx(self, pct, size=1_000_000):
-        return self.with_dir(context_window={"used_percentage": pct, "context_window_size": size})
+    def ctx(self, used, size=1_000_000):
+        usage = {"input_tokens": 10, "cache_creation_input_tokens": 990, "cache_read_input_tokens": used - 1_000}
+        return self.with_dir(context_window={
+            "used_percentage": round(used * 100 / size), "context_window_size": size, "current_usage": usage,
+        })
 
     # ---- layout
 
@@ -103,8 +116,8 @@ class StatuslineTest(unittest.TestCase):
             self.assertTrue(self.lines(payload)[1].endswith(" │ " + text), (ms, text))
 
     def test_bar_is_full_at_100_and_empty_at_0(self):
-        self.assertTrue(self.lines(self.ctx(100))[1].startswith("██⣿⣿⣿⣿⣿⣿⣿⣿ 100%"))
-        self.assertTrue(self.lines(self.ctx(0))[1].startswith("⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀ 0%"))
+        self.assertTrue(self.lines(self.ctx(400_000))[1].startswith("██⣿⣿⣿⣿⣿⣿⣿⣿ 100%"))
+        self.assertTrue(self.lines(self.ctx(1_000))[1].startswith("⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀ 0%"))
 
     # ---- git status
 
@@ -132,41 +145,52 @@ class StatuslineTest(unittest.TestCase):
         self.assertEqual(ANSI.sub("", raw).split("\n")[0], "📁 ~/notes │ 🌿 - │ Opus 5.5 · effort high")
         self.assertIn(colored(GRAY, "-"), raw.split("\n")[0])
 
-    # ---- thresholds: 60% / 80% of autoCompactWindow, as a share of context_window_size
+    # ---- context: used tokens against autoCompactWindow (the compaction point), not the model window
 
-    def assert_ctx_color(self, pct, size, color):
-        raw = self.run_raw(self.ctx(pct, size))
-        self.assertIn(colored(color, f"{pct}%"), raw.split("\n")[1], (pct, size, color))
+    def assert_ctx(self, used, size, text, color):
+        raw = self.run_raw(self.ctx(used, size))
+        self.assertIn(colored(color, text), raw.split("\n")[1], (used, size, text, color))
 
-    def test_thresholds_scale_with_auto_compact_window_on_a_1m_window(self):
-        # 400k of 1M: warn at 24%, critical at 32%
-        self.assert_ctx_color(23, 1_000_000, GREEN)
-        self.assert_ctx_color(24, 1_000_000, YELLOW)
-        self.assert_ctx_color(31, 1_000_000, YELLOW)
-        self.assert_ctx_color(32, 1_000_000, RED)
+    def test_ctx_is_counted_against_auto_compact_window(self):
+        self.assert_ctx(200_000, 1_000_000, "50%", GREEN)
 
-    def test_thresholds_are_60_and_80_when_the_window_is_the_compact_window(self):
-        self.assert_ctx_color(59, 400_000, GREEN)
-        self.assert_ctx_color(60, 400_000, YELLOW)
-        self.assert_ctx_color(80, 400_000, RED)
-
-    def test_without_auto_compact_window_thresholds_are_60_and_80_of_the_window(self):
+    def test_without_auto_compact_window_ctx_falls_back_to_the_model_window(self):
         self.settings()
-        self.assert_ctx_color(59, 1_000_000, GREEN)
-        self.assert_ctx_color(60, 1_000_000, YELLOW)
-        self.assert_ctx_color(80, 1_000_000, RED)
+        self.assert_ctx(200_000, 1_000_000, "20%", GREEN)
 
-    def test_missing_settings_file_is_fine(self):
+    def test_missing_settings_file_falls_back_to_the_model_window(self):
         os.remove(os.path.join(self.home, ".claude", "settings.json"))
-        self.assert_ctx_color(60, 1_000_000, YELLOW)
+        self.assert_ctx(200_000, 1_000_000, "20%", GREEN)
 
-    def test_compact_window_larger_than_the_model_window_is_capped(self):
+    def test_used_above_the_compaction_point_is_capped_at_100(self):
+        self.assert_ctx(500_000, 1_000_000, "100%", RED)
+        self.assertTrue(self.lines(self.ctx(500_000))[1].startswith("██⣿⣿⣿⣿⣿⣿⣿⣿ 100%"))
+
+    def test_thresholds_are_60_and_80_percent_of_the_compaction_point(self):
+        self.assert_ctx(239_999, 1_000_000, "59%", GREEN)
+        self.assert_ctx(240_000, 1_000_000, "60%", YELLOW)
+        self.assert_ctx(319_999, 1_000_000, "79%", YELLOW)
+        self.assert_ctx(320_000, 1_000_000, "80%", RED)
+
+    def test_thresholds_without_auto_compact_window(self):
+        self.settings()
+        self.assert_ctx(599_999, 1_000_000, "59%", GREEN)
+        self.assert_ctx(600_000, 1_000_000, "60%", YELLOW)
+        self.assert_ctx(800_000, 1_000_000, "80%", RED)
+
+    def test_compact_window_larger_than_the_model_window_uses_the_window(self):
         self.settings(autoCompactWindow=1_000_000)
-        self.assert_ctx_color(59, 200_000, GREEN)
-        self.assert_ctx_color(60, 200_000, YELLOW)
+        self.assert_ctx(100_000, 200_000, "50%", GREEN)
+        self.assert_ctx(120_000, 200_000, "60%", YELLOW)
+
+    def test_without_current_usage_ctx_is_a_gray_dash(self):
+        payload = self.with_dir(context_window={"used_percentage": 12, "context_window_size": 1_000_000})
+        raw = self.run_raw(payload)
+        self.assertTrue(ANSI.sub("", raw).split("\n")[1].startswith("⣀⣀⣀⣀⣀⣀⣀⣀⣀⣀ - │ "))
+        self.assertIn(colored(GRAY, "-"), raw.split("\n")[1].split("│")[0])
 
     def test_bar_takes_the_context_color(self):
-        raw = self.run_raw(self.ctx(32))
+        raw = self.run_raw(self.ctx(320_000))
         self.assertTrue(raw.split("\n")[1].startswith(f"\x1b[38;5;{RED}m█"), repr(raw))
 
     def test_cost_and_5h_colors(self):
