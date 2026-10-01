@@ -10,7 +10,8 @@
 # Context: bar and % count the tokens in context (current_usage: input + cache creation + cache read)
 # against the compaction point, so a full bar means compaction. The point is autoCompactWindow from user
 # settings, capped at context_window_size; without it, context_window_size. Payload used_percentage is
-# not used: it is counted against the model window. Yellow from 60%, red from 80%.
+# not used: it is counted against the model window. Rounded to nearest, like Claude Code's own percentage
+# (Math.round). Yellow from 60%, red from 80%.
 # Runs locally: costs zero model tokens. Keep it fast: one jq and one git process (debounced 300 ms).
 in=$(cat)
 
@@ -93,7 +94,7 @@ base=${acw:-$size}
 [ -n "$acw" ] && [ -n "$size" ] && [ "$acw" -gt "$size" ] && base=$size
 ctx=""
 if [ -n "$used" ] && [ -n "$base" ] && [ "$base" -gt 0 ]; then
-  ctx=$((used * 100 / base))
+  ctx=$(( (used * 100 + base / 2) / base ))
   [ "$ctx" -gt 100 ] && ctx=100
 fi
 if [ -n "$ctx" ]; then

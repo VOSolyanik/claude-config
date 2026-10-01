@@ -166,17 +166,24 @@ class StatuslineTest(unittest.TestCase):
         self.assert_ctx(500_000, 1_000_000, "100%", RED)
         self.assertTrue(self.lines(self.ctx(500_000))[1].startswith("██⣿⣿⣿⣿⣿⣿⣿⣿ 100%"))
 
-    def test_thresholds_are_60_and_80_percent_of_the_compaction_point(self):
-        self.assert_ctx(239_999, 1_000_000, "59%", GREEN)
-        self.assert_ctx(240_000, 1_000_000, "60%", YELLOW)
-        self.assert_ctx(319_999, 1_000_000, "79%", YELLOW)
-        self.assert_ctx(320_000, 1_000_000, "80%", RED)
+    def test_ctx_rounds_to_nearest_like_context_command(self):
+        self.assert_ctx(47_800, 1_000_000, "12%", GREEN)  # 11.95%
+        self.assert_ctx(47_799, 1_000_000, "12%", GREEN)  # 11.94975%
+        self.assert_ctx(45_999, 1_000_000, "11%", GREEN)  # 11.49975%
+
+    def test_thresholds_are_60_and_80_percent_after_rounding(self):
+        # base 400k: 59.5% = 238k rounds to 60, 79.5% = 318k rounds to 80
+        self.assert_ctx(237_999, 1_000_000, "59%", GREEN)
+        self.assert_ctx(238_000, 1_000_000, "60%", YELLOW)
+        self.assert_ctx(317_999, 1_000_000, "79%", YELLOW)
+        self.assert_ctx(318_000, 1_000_000, "80%", RED)
 
     def test_thresholds_without_auto_compact_window(self):
         self.settings()
-        self.assert_ctx(599_999, 1_000_000, "59%", GREEN)
-        self.assert_ctx(600_000, 1_000_000, "60%", YELLOW)
-        self.assert_ctx(800_000, 1_000_000, "80%", RED)
+        self.assert_ctx(594_999, 1_000_000, "59%", GREEN)
+        self.assert_ctx(595_000, 1_000_000, "60%", YELLOW)
+        self.assert_ctx(794_999, 1_000_000, "79%", YELLOW)
+        self.assert_ctx(795_000, 1_000_000, "80%", RED)
 
     def test_compact_window_larger_than_the_model_window_uses_the_window(self):
         self.settings(autoCompactWindow=1_000_000)
