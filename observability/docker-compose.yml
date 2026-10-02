@@ -41,10 +41,10 @@ services:
   grafana:
     image: grafana/grafana:13.2.3
     environment:
-      # Set GF_SECURITY_ADMIN_PASSWORD in observability/.env (git-ignored); Grafana asks to change the default.
-      GF_SECURITY_ADMIN_PASSWORD: ${GF_SECURITY_ADMIN_PASSWORD:-admin}
-      GF_AUTH_ANONYMOUS_ENABLED: "true"
-      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      # From observability/.env (git-ignored). Applied when Grafana creates its database, i.e. on a fresh
+      # grafana-data volume; compose refuses to start without it.
+      GF_SECURITY_ADMIN_PASSWORD: ${GF_SECURITY_ADMIN_PASSWORD:?set GF_SECURITY_ADMIN_PASSWORD in observability/.env}
+      GF_AUTH_ANONYMOUS_ENABLED: "false"
       GF_ANALYTICS_REPORTING_ENABLED: "false"
       GF_ANALYTICS_CHECK_FOR_UPDATES: "false"
       GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/claude-code.json

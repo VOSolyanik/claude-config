@@ -21,9 +21,16 @@ Claude Code ──OTLP gRPC :4317──► OTel Collector ──OTLP──► Pr
 
 ```bash
 cd ~/tools/claude-config/observability    # the live clone, like every other part of the config
-echo 'GF_SECURITY_ADMIN_PASSWORD=<choose one>' > .env   # optional; .env is git-ignored
+read -rs P && printf 'GF_SECURITY_ADMIN_PASSWORD=%s\n' "$P" > .env && unset P && chmod 600 .env   # git-ignored
 docker compose up -d
-open http://127.0.0.1:3000                # anonymous viewers see the dashboard; admin edits it
+open http://127.0.0.1:3000                # log in as admin; anonymous access is off
+```
+
+Grafana reads the password only when it creates its database. To change it later, recreate the volume
+(dashboards and datasources come from files, nothing else is kept there):
+
+```bash
+docker compose rm -sf grafana && docker volume rm claude-otel_grafana-data && docker compose up -d grafana
 ```
 
 ## Point Claude Code at it
