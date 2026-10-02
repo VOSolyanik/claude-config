@@ -52,9 +52,9 @@
     },
     {
       "id": 2,
-      "type": "barchart",
-      "title": "2. $ by skill and by subagent (selected range)",
-      "description": "Real names need OTEL_LOG_TOOL_DETAILS=1; otherwise custom / third-party. Empty label = main loop.",
+      "type": "bargauge",
+      "title": "2a. $ by active skill at request time (selected range)",
+      "description": "skill.name on claude_code.cost.usage is the ACTIVE skill when the request was made, not the cost of running the skill. In the main loop it is the last skill the model invoked with the Skill tool, and it stays until another skill is invoked (Claude Code 2.1.287: options.activeSkill is restored only for fork-mode skills or a failed call). So a skill invoked early in a session collects the rest of that session. Requests before any skill have no skill.name and are left out. Real names need OTEL_LOG_TOOL_DETAILS=1.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -62,31 +62,74 @@
       "gridPos": {
         "x": 12,
         "y": 0,
-        "w": 12,
+        "w": 6,
         "h": 8
       },
       "fieldConfig": {
         "defaults": {
-          "unit": "currencyUSD"
+          "unit": "currencyUSD",
+          "decimals": 2
         }
       },
       "options": {
         "orientation": "horizontal",
-        "xTickLabelRotation": 0
+        "displayMode": "basic",
+        "showUnfilled": true,
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
       },
       "targets": [
         {
           "refId": "A",
           "instant": true,
-          "format": "table",
-          "legendFormat": "skill: {{skill_name}}",
+          "legendFormat": "{{skill_name}}",
           "expr": "sort_desc(sum by (skill_name) (increase(claude_code_cost_usage_USD_total{skill_name!=\"\"}[$__range] anchored)))"
-        },
+        }
+      ]
+    },
+    {
+      "id": 8,
+      "type": "bargauge",
+      "title": "2b. $ by subagent (selected range)",
+      "description": "agent.name on claude_code.cost.usage: requests made inside a subagent (built-in agents by name, custom ones by name with OTEL_LOG_TOOL_DETAILS=1). Main-loop requests have no agent.name and are left out.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 18,
+        "y": 0,
+        "w": 6,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "decimals": 2
+        }
+      },
+      "options": {
+        "orientation": "horizontal",
+        "displayMode": "basic",
+        "showUnfilled": true,
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        }
+      },
+      "targets": [
         {
-          "refId": "B",
+          "refId": "A",
           "instant": true,
-          "format": "table",
-          "legendFormat": "agent: {{agent_name}}",
+          "legendFormat": "{{agent_name}}",
           "expr": "sort_desc(sum by (agent_name) (increase(claude_code_cost_usage_USD_total{agent_name!=\"\"}[$__range] anchored)))"
         }
       ]
