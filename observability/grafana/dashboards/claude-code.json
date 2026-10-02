@@ -298,8 +298,8 @@
     {
       "id": 6,
       "type": "timeseries",
-      "title": "5. Gate blocks per day",
-      "description": "Hooks (guard_bash, dep_gate): tool_decision with source=hook and blocking hook outcomes. Deny rules from user settings are reported as user_reject, the same as a manual refusal, so they are not counted here.",
+      "title": "5. Gate blocks per hour",
+      "description": "Hooks (guard_bash, dep_gate): tool_decision events with source=hook that were not accepted, and blocking hook_execution_complete outcomes. Deny rules from user settings are reported as user_reject, the same as a manual refusal, so they are not counted. Hourly bars: Grafana aligns a 1d step to midnight UTC and LogQL has no negative offset, so per-day bars would stay empty until the day ends; the bar at hour H covers H-1h to H.",
       "datasource": {
         "type": "loki",
         "uid": "loki"
@@ -310,7 +310,7 @@
         "w": 12,
         "h": 8
       },
-      "interval": "1d",
+      "interval": "1h",
       "fieldConfig": {
         "defaults": {
           "unit": "short",
@@ -327,12 +327,12 @@
         {
           "refId": "A",
           "legendFormat": "hook denied {{tool_name}}",
-          "expr": "sum by (tool_name) (count_over_time({service_name=\"claude-code\"} | event_name=\"tool_decision\" | source=\"hook\" | decision!=\"accept\" [1d]))"
+          "expr": "sum by (tool_name) (count_over_time({service_name=\"claude-code\"} | event_name=\"tool_decision\" | source=\"hook\" | decision!=\"accept\" [1h]))"
         },
         {
           "refId": "B",
           "legendFormat": "blocking {{hook_event}}",
-          "expr": "sum by (hook_event) (sum_over_time({service_name=\"claude-code\"} | event_name=\"hook_execution_complete\" | num_blocking!=\"0\" | unwrap num_blocking [1d]))"
+          "expr": "sum by (hook_event) (sum_over_time({service_name=\"claude-code\"} | event_name=\"hook_execution_complete\" | num_blocking!=\"0\" | unwrap num_blocking [1h]))"
         }
       ]
     },
