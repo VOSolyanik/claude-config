@@ -18,7 +18,7 @@
       "id": 1,
       "type": "timeseries",
       "title": "1. $ per day by model",
-      "description": "claude_code.cost.usage: client-side estimate at list price, not a bill.",
+      "description": "claude_code.cost.usage: client-side estimate at list price, not a bill. One bar per UTC day (21:00-21:00 at UTC-3): Grafana aligns a 1d step to midnight UTC, so the bar at day D uses offset -1d to cover D 00:00 to D+1 00:00; today's bar grows during the day.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -45,7 +45,7 @@
       "targets": [
         {
           "refId": "A",
-          "expr": "sum by (model) (increase(claude_code_cost_usage_USD_total[1d] anchored))",
+          "expr": "sum by (model) (increase(claude_code_cost_usage_USD_total[1d] anchored offset -1d))",
           "legendFormat": "{{model}}"
         }
       ]
