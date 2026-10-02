@@ -120,6 +120,24 @@ class JavaScript(unittest.TestCase):
         dep_audit.audit(event("cd packages/web && npm i lodash", self.p.root), run, which_all)
         self.assertEqual(run.calls[0][1], self.p.sub)
 
+    def test_cd_after_other_commands_still_moves_the_working_directory(self):
+        # found live: `mkdir -p x && cd x && ... && pnpm add ...` audited the session's cwd instead of x
+        self.p = Project()
+        open(os.path.join(self.p.sub, "package-lock.json"), "w").close()
+        for cmd in ["mkdir -p packages/web && cd packages/web && npm i lodash",
+                    "cd packages && cd web && printf x > notes.txt && npm i lodash 2>&1 | tail -3; ls"]:
+            with self.subTest(cmd=cmd):
+                run = FakeRunner(stdout=fixture("npm-audit.json"))
+                dep_audit.audit(event(cmd, self.p.root), run, which_all)
+                self.assertEqual(run.calls[0][1], self.p.sub)
+
+    def test_cd_after_the_install_does_not_count(self):
+        self.p = Project("package-lock.json")
+        open(os.path.join(self.p.sub, "package-lock.json"), "w").close()  # a later cd would find this one
+        run = FakeRunner(stdout=fixture("npm-audit.json"))
+        dep_audit.audit(event("npm i lodash && cd packages/web", self.p.root), run, which_all)
+        self.assertEqual(run.calls[0][1], self.p.root)
+
     def test_clean_audit_says_nothing(self):
         self.p = Project("pnpm-lock.yaml")
         clean = json.dumps({"advisories": {}, "metadata": {"vulnerabilities":

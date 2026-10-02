@@ -45,11 +45,15 @@ VERSIONISH = re.compile(r"^\d+(\.\d+)+[0-9A-Za-z.+-]*$")  # needs a dot: rules o
 
 
 def _start_dir(cmd, cwd):
-    """The directory the install ran in: cwd, moved by a leading `cd <dir>` segment if there is one."""
-    first = _tokens(SEGMENT_SPLIT.split(cmd or "")[0])
-    if len(first) == 2 and first[0] == "cd":
-        return os.path.normpath(os.path.join(cwd, os.path.expanduser(first[1])))
-    return cwd
+    """The directory the first install ran in: cwd, moved by every `cd <dir>` segment before it."""
+    where = cwd
+    for segment in SEGMENT_SPLIT.split(cmd or ""):
+        if parse_installs(segment):
+            break
+        toks = _tokens(segment)
+        if len(toks) == 2 and toks[0] == "cd":
+            where = os.path.normpath(os.path.join(where, os.path.expanduser(toks[1])))
+    return where
 
 
 def _find_lockfile(start, names):
