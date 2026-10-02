@@ -1,0 +1,3 @@
+# Metrics arrive over OTLP (--web.enable-otlp-receiver, fed by the collector); nothing to scrape.
+global:
+  scrape_interval: 15s

@@ -1,0 +1,48 @@
+# Receives OTLP from Claude Code, drops account identity, and forwards metrics to Prometheus's OTLP receiver
+# and events (logs) to Loki's.
+# session.id stays on metrics: every Claude Code process keeps its own cumulative counters, so sessions
+# without it would overwrite each other's series. Prometheus counts each session from zero
+# (created-timestamp-zero-ingestion), which increase() needs for short sessions.
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  batch: {}
+  # Account identity has no use in a single-user dashboard and should not sit in the time-series database.
+  attributes/metrics-identity:
+    actions:
+      - {key: user.id, action: delete}
+      - {key: user.email, action: delete}
+      - {key: user.account_uuid, action: delete}
+      - {key: user.account_id, action: delete}
+      - {key: organization.id, action: delete}
+  # Events keep session.id (to join eval runs to their arm); identity fields go.
+  attributes/logs-identity:
+    actions:
+      - {key: user.id, action: delete}
+      - {key: user.email, action: delete}
+      - {key: user.account_uuid, action: delete}
+      - {key: user.account_id, action: delete}
+      - {key: organization.id, action: delete}
+
+exporters:
+  otlphttp/prometheus:
+    endpoint: http://prometheus:9090/api/v1/otlp
+  otlphttp/loki:
+    endpoint: http://loki:3100/otlp
+
+service:
+  pipelines:
+    metrics:
+      receivers: [otlp]
+      processors: [attributes/metrics-identity, batch]
+      exporters: [otlphttp/prometheus]
+    logs:
+      receivers: [otlp]
+      processors: [attributes/logs-identity, batch]
+      exporters: [otlphttp/loki]

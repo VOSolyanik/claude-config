@@ -1,0 +1,265 @@
+{
+  "uid": "claude-code",
+  "title": "Claude Code",
+  "tags": [
+    "claude-code",
+    "otel"
+  ],
+  "timezone": "browser",
+  "schemaVersion": 39,
+  "editable": true,
+  "time": {
+    "from": "now-7d",
+    "to": "now"
+  },
+  "refresh": "1m",
+  "panels": [
+    {
+      "id": 1,
+      "type": "timeseries",
+      "title": "1. $ per day by model",
+      "description": "claude_code.cost.usage: client-side estimate at list price, not a bill.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 0,
+        "w": 12,
+        "h": 8
+      },
+      "interval": "1d",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD",
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 80,
+            "stacking": {
+              "mode": "normal"
+            }
+          }
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (model) (increase(claude_code_cost_usage_USD_total[1d] anchored))",
+          "legendFormat": "{{model}}"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "type": "barchart",
+      "title": "2. $ by skill and by subagent (selected range)",
+      "description": "Real names need OTEL_LOG_TOOL_DETAILS=1; otherwise custom / third-party. Empty label = main loop.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 0,
+        "w": 12,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "currencyUSD"
+        }
+      },
+      "options": {
+        "orientation": "horizontal",
+        "xTickLabelRotation": 0
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "instant": true,
+          "format": "table",
+          "legendFormat": "skill: {{skill_name}}",
+          "expr": "sort_desc(sum by (skill_name) (increase(claude_code_cost_usage_USD_total{skill_name!=\"\"}[$__range] anchored)))"
+        },
+        {
+          "refId": "B",
+          "instant": true,
+          "format": "table",
+          "legendFormat": "agent: {{agent_name}}",
+          "expr": "sort_desc(sum by (agent_name) (increase(claude_code_cost_usage_USD_total{agent_name!=\"\"}[$__range] anchored)))"
+        }
+      ]
+    },
+    {
+      "id": 3,
+      "type": "timeseries",
+      "title": "3. Tokens per hour by type",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 8,
+        "w": 16,
+        "h": 8
+      },
+      "interval": "1h",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 70,
+            "stacking": {
+              "mode": "normal"
+            }
+          }
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "expr": "sum by (type) (increase(claude_code_token_usage_tokens_total[1h] anchored))",
+          "legendFormat": "{{type}}"
+        }
+      ]
+    },
+    {
+      "id": 4,
+      "type": "stat",
+      "title": "3. Cache hit (selected range)",
+      "description": "cacheRead / (input + cacheRead + cacheCreation).",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 16,
+        "y": 8,
+        "w": 8,
+        "h": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 0.85
+              },
+              {
+                "color": "green",
+                "value": 0.9
+              }
+            ]
+          }
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "instant": true,
+          "expr": "sum(increase(claude_code_token_usage_tokens_total{type=\"cacheRead\"}[$__range] anchored)) / sum(increase(claude_code_token_usage_tokens_total{type=~\"input|cacheRead|cacheCreation\"}[$__range] anchored))"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "4. Edit acceptance per day",
+      "description": "claude_code.code_edit_tool.decision: accepted / all decisions on Edit, Write, NotebookEdit.",
+      "datasource": {
+        "type": "prometheus",
+        "uid": "prometheus"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 16,
+        "w": 12,
+        "h": 8
+      },
+      "interval": "1d",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percentunit",
+          "min": 0,
+          "max": 1
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "legendFormat": "accepted",
+          "expr": "sum(increase(claude_code_code_edit_tool_decision_total{decision=\"accept\"}[1d] anchored)) / sum(increase(claude_code_code_edit_tool_decision_total[1d] anchored))"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "5. Gate blocks per day",
+      "description": "Hooks (guard_bash, dep_gate): tool_decision with source=hook and blocking hook outcomes. Deny rules from user settings are reported as user_reject, the same as a manual refusal, so they are not counted here.",
+      "datasource": {
+        "type": "loki",
+        "uid": "loki"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 16,
+        "w": 12,
+        "h": 8
+      },
+      "interval": "1d",
+      "fieldConfig": {
+        "defaults": {
+          "unit": "short",
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 80,
+            "stacking": {
+              "mode": "normal"
+            }
+          }
+        }
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "legendFormat": "hook denied {{tool_name}}",
+          "expr": "sum by (tool_name) (count_over_time({service_name=\"claude-code\"} | event_name=\"tool_decision\" | source=\"hook\" | decision!=\"accept\" [1d]))"
+        },
+        {
+          "refId": "B",
+          "legendFormat": "blocking {{hook_event}}",
+          "expr": "sum by (hook_event) (sum_over_time({service_name=\"claude-code\"} | event_name=\"hook_execution_complete\" | num_blocking!=\"0\" | unwrap num_blocking [1d]))"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "text",
+      "title": "6. PR cycle time (deferred)",
+      "gridPos": {
+        "x": 0,
+        "y": 24,
+        "w": 24,
+        "h": 3
+      },
+      "options": {
+        "mode": "markdown",
+        "content": "Deferred until a repository with a PR flow. Plan: a gh-based script, AI PRs marked with the label `ai` (docs/track-a/otel.md in claude-personal)."
+      }
+    }
+  ],
+  "description": "increase(... anchored): counters are per session (session.id kept) and start at zero (created-timestamp-zero-ingestion); anchored ranges do not extrapolate, which inflated short sessions by ~50% in the first test."
+}
