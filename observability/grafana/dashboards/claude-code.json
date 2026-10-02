@@ -220,7 +220,7 @@
       "id": 5,
       "type": "timeseries",
       "title": "4. Edit acceptance per day",
-      "description": "claude_code.code_edit_tool.decision: accepted / all decisions on Edit, Write, NotebookEdit.",
+      "description": "claude_code.code_edit_tool.decision counts permission decisions (accept/reject) for Edit, Write and NotebookEdit - every time a permission check decides on an edit, not every edit made. The source label says who decided: user_temporary / user_permanent (you, in the prompt), user_reject / user_abort (you refused), config (an allow or deny rule), classifier (auto mode), hook. The line is the accepted share of all decisions; bars split the decisions by source. One point per UTC day, offset -1d as in panel 1.",
       "datasource": {
         "type": "prometheus",
         "uid": "prometheus"
@@ -234,16 +234,64 @@
       "interval": "1d",
       "fieldConfig": {
         "defaults": {
-          "unit": "percentunit",
-          "min": 0,
-          "max": 1
-        }
+          "unit": "short",
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 70,
+            "stacking": {
+              "mode": "normal"
+            }
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byFrameRefID",
+              "options": "A"
+            },
+            "properties": [
+              {
+                "id": "unit",
+                "value": "percentunit"
+              },
+              {
+                "id": "min",
+                "value": 0
+              },
+              {
+                "id": "max",
+                "value": 1
+              },
+              {
+                "id": "custom.axisPlacement",
+                "value": "right"
+              },
+              {
+                "id": "custom.drawStyle",
+                "value": "line"
+              },
+              {
+                "id": "custom.pointSize",
+                "value": 8
+              },
+              {
+                "id": "custom.showPoints",
+                "value": "always"
+              }
+            ]
+          }
+        ]
       },
       "targets": [
         {
           "refId": "A",
-          "legendFormat": "accepted",
-          "expr": "sum(increase(claude_code_code_edit_tool_decision_total{decision=\"accept\"}[1d] anchored)) / sum(increase(claude_code_code_edit_tool_decision_total[1d] anchored))"
+          "legendFormat": "accepted share",
+          "expr": "sum(increase(claude_code_code_edit_tool_decision_total{decision=\"accept\"}[1d] anchored offset -1d)) / sum(increase(claude_code_code_edit_tool_decision_total[1d] anchored offset -1d))"
+        },
+        {
+          "refId": "B",
+          "legendFormat": "{{decision}} by {{source}}",
+          "expr": "sum by (decision, source) (increase(claude_code_code_edit_tool_decision_total[1d] anchored offset -1d))"
         }
       ]
     },
