@@ -211,15 +211,17 @@ def _shell_role(toks):
 
 
 def _command(toks, queue, commands):
-    """Record one simple command; queue whatever it will execute itself."""
+    """Record one simple command as (tokens, via_xargs); queue whatever it will execute itself."""
+    via_xargs = False
     while toks and os.path.basename(toks[0]) == "xargs":
+        via_xargs = True
         k = 1
         while k < len(toks) and toks[k].startswith("-"):
             k += 2 if toks[k] in OPTS_WITH_ARG["xargs"] else 1
         toks = _strip_prefix(toks[k:])
     if not toks:
         return None
-    commands.append(toks)
+    commands.append((toks, via_xargs))
     name = os.path.basename(toks[0])
     if name in SHELLS:
         role, script = _shell_role(toks)
@@ -235,6 +237,17 @@ def executed_parts(cmd):
     """(commands, skeletons, pipelines): token lists of every simple command a shell would run (unquoted),
     the text of every executed piece with quoted literals blanked, and the commands of every pipeline of two
     or more. Raises Unbalanced on text it cannot balance."""
+    commands, skeletons, pipelines = _walk(cmd)
+    return [toks for toks, _ in commands], skeletons, pipelines
+
+
+def executed_commands(cmd):
+    """[(tokens, via_xargs)] for every simple command a shell would run; via_xargs means more arguments
+    arrive from xargs input. Raises Unbalanced on text it cannot balance."""
+    return _walk(cmd)[0]
+
+
+def _walk(cmd):
     commands, skeletons, pipelines, queue = [], [], [], [(cmd, 0)]
     while queue:
         text, depth = queue.pop()

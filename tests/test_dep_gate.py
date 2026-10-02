@@ -140,6 +140,63 @@ class ShellNoise(unittest.TestCase):
                 self.assertEqual([(i.ecosystem, i.name) for i in dep_gate.parse_installs(cmd)], want)
 
 
+class ExecutedPartsOnly(unittest.TestCase):
+    """Found live on 2026-10-02: a commit message that quoted an install command was denied, its words
+    taken for packages. Only what a shell will run is parsed (claude-kit/hooks/_shell.py)."""
+
+    def names(self, cmd):
+        return [(i.ecosystem, i.name) for i in dep_gate.parse_installs(cmd)]
+
+    def test_quoted_data_is_not_an_install(self):
+        for cmd in [
+            'git commit -m "fix: when cd came after a mkdir, pnpm add x was audited from cwd"',
+            'echo "npm install fake-pkg-xyz"',
+            "cat > notes.md <<'EOF'\npnpm add fake-pkg-xyz\nEOF",
+            'grep -n "uv add" file',
+            "printf '%s' 'pip install requests'",
+            "echo done  # npm install fake-pkg-xyz",
+        ]:
+            with self.subTest(cmd=cmd):
+                self.assertEqual(self.names(cmd), [])
+
+    def test_executed_installs_are_found(self):
+        cases = {
+            "true && pnpm add zod": [("npm", "zod")],
+            'bash -c "npm i lodash"': [("npm", "lodash")],
+            "sh -c 'cd web && pnpm add zod'": [("npm", "zod")],
+            '"pnpm" add zod': [("npm", "zod")],
+            "env npm install left-pad": [("npm", "left-pad")],
+            "sudo -u me pip install requests": [("pypi", "requests")],
+            "find . -name x | xargs npm install left-pad": [("npm", "left-pad"), ("npm", "<xargs input>")],
+            "xargs -I{} npm install {} < list": [("npm", "<xargs input>")],
+            'echo "pnpm add zod" | sh': [("npm", "zod")],
+            "bash <<EOF\npip install requests\nEOF": [("pypi", "requests")],
+            "echo $(pip install httpx)": [("pypi", "httpx")],
+            'eval "uv add fastapi"': [("pypi", "fastapi")],
+        }
+        for cmd, want in cases.items():
+            with self.subTest(cmd=cmd):
+                self.assertEqual(self.names(cmd), want)
+
+    def test_xargs_install_without_named_packages_asks_without_network(self):
+        reg = FakeRegistry()
+        for cmd in ["cat deps.txt | xargs npm install", "xargs -n1 pip install < requirements.in"]:
+            with self.subTest(cmd=cmd):
+                installs = dep_gate.parse_installs(cmd)
+                self.assertEqual(len(installs), 1)
+                self.assertIn("xargs", installs[0].unvettable)
+                decision, reason = decide(cmd, reg)
+                self.assertEqual(decision, "ask")
+                self.assertIn("xargs", reason)
+        self.assertEqual(reg.calls, [])
+
+    def test_bare_lockfile_install_without_xargs_stays_silent(self):
+        self.assertEqual(dep_gate.parse_installs("true && npm install"), [])
+
+    def test_unbalanced_quotes_fall_back_to_the_whole_text(self):
+        self.assertEqual(self.names('echo "x; npm install fake-pkg-xyz'), [("npm", "fake-pkg-xyz")])
+
+
 class Decisions(unittest.TestCase):
     def setUp(self):
         self.reg = FakeRegistry()

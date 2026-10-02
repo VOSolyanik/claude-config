@@ -43,6 +43,9 @@ try:
 except ImportError:  # Python < 3.11
     tomllib = None
 
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+from _shell import Unbalanced, executed_commands  # noqa: E402
+
 NPM_REGISTRY = "https://registry.npmjs.org/"
 NPM_DOWNLOADS = "https://api.npmjs.org/downloads/point/last-week/"
 PYPI_JSON = "https://pypi.org/pypi/"
@@ -162,16 +165,30 @@ def _pypi_spec(spec):
     return (m.group(0), "") if m else (None, "cannot read a package name")
 
 
+XARGS_INPUT = "<xargs input>"
+
+
+def _commands(cmd):
+    """(tokens, via_xargs) for each command a shell would run: quoted data, heredocs written to files and
+    comments are skipped (see _shell.py); text that cannot be balanced falls back to every segment."""
+    try:
+        return executed_commands(cmd or "")
+    except Unbalanced:
+        return [(_tokens(segment), False) for segment in SEGMENT_SPLIT.split(cmd or "")]
+
+
 def parse_installs(cmd):
     """Every package that the command would add, in order; empty for lockfile installs."""
     found = []
-    for segment in SEGMENT_SPLIT.split(cmd or ""):
-        parsed = _install_args(_tokens(segment))
+    for toks, via_xargs in _commands(cmd):
+        parsed = _install_args(toks)
         if not parsed:
             continue
         ecosystem, flags, args = parsed
         if "--help" in args or "-h" in args:
             continue  # prints usage, installs nothing
+        if via_xargs:  # xargs appends its input lines as more packages; {} is its placeholder for them
+            args = [a for a in args if "{}" not in a]
         start, custom_source = len(found), ""
         i = 0
         while i < len(args):
@@ -195,6 +212,8 @@ def parse_installs(cmd):
                 continue
             name, why = (_npm_spec if ecosystem == "npm" else _pypi_spec)(arg)
             found.append(Install(ecosystem, name or arg, why, spec=arg))
+        if via_xargs:
+            found.append(Install(ecosystem, XARGS_INPUT, "packages come from xargs input; dep_gate cannot vet them"))
         if custom_source:
             # packages may come from that other registry or index; the public one says nothing about them
             for inst in found[start:]:
