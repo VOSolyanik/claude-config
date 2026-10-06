@@ -156,6 +156,8 @@ python3 -m unittest discover -s tests -p 'test_*.py'  # hooks: registries, OSV a
 FAKE_UPSTREAM=<path to fake_anthropic.py> tests/integration.sh   # real claude against a fake Messages API
 ```
 
+The integration test needs your own fake Anthropic API upstream, which is not part of this repository: any local HTTP stub that answers in the Messages API format, started as `python3 <stub> <port> <dir>` and saving each request body into `<dir>`; the other two suites run without it.
+
 Neither suite touches the real HOME or the network.
 
 ## Provenance
