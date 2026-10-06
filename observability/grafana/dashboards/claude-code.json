@@ -348,7 +348,7 @@
       },
       "options": {
         "mode": "markdown",
-        "content": "Deferred until a repository with a PR flow. Plan: a gh-based script, AI PRs marked with the label `ai` (docs/track-a/otel.md in claude-personal)."
+        "content": "Deferred until a repository with a PR flow. Plan: a gh-based script, AI PRs marked with the label `ai`."
       }
     }
   ],
