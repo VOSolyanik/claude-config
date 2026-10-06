@@ -157,3 +157,7 @@ FAKE_UPSTREAM=<path to fake_anthropic.py> tests/integration.sh   # real claude a
 ```
 
 Neither suite touches the real HOME or the network.
+
+## Provenance
+
+`claude-kit/` and parts of `global/` come from an earlier research project of mine, built with the help of Claude, and were then adapted and extended here (for example, `guard_bash` was rewritten to check only the executable parts of a command). The `dep_gate` and `dep_audit` hooks (on top of the kit's shared `_common.py` helpers), the `claude-config` CLI and the observability stack were written for this setup; the early commits of the hooks and the CLI stay in the private repository this one was split from. The whole repository is licensed under MIT (see LICENSE).
