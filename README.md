@@ -9,7 +9,7 @@ My global Claude Code setup, in two layers: this shareable repository (instructi
 
 ## Agent usage & cost dashboard
 
-![Grafana dashboard: cost by model, cost by skill and subagent, tokens and cache hit, edit decisions, gate blocks](docs/img/dashboard.png)
+![Grafana dashboard: cost per day by model, cost by subagent, tokens per hour by type, prompt-cache hit rate](docs/img/dashboard.png)
 
 ```bash
 cd observability
