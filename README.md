@@ -1,5 +1,34 @@
 # claude-config
 
+My global Claude Code setup, in two layers: this shareable repository (instructions, permission rules, hooks, a skill, telemetry) and a private one with personal preferences and memory, merged on top by one bash script.
+
+- **Guard hooks.** `guard_bash.py` reads each Bash command the way the shell would (after unquoting, only the parts that actually run) and denies `rm` outside the project and `/tmp`, force-push, `curl … | sh` and skipped git hooks. Deny rules in `settings.base.json` are the hard boundary behind it.
+- **Supply-chain gate.** `dep_gate.py` vets a package before the agent adds it: missing from the registry (likely hallucinated), an OSV `MAL-*` advisory or a typosquat → deny; brand-new or barely downloaded → ask. `dep_audit.py` audits the lockfile right after an install.
+- **Telemetry.** A local OpenTelemetry stack and a Grafana dashboard for cost, tokens, cache hit, edit decisions and gate blocks.
+- **Tests** for all of it, with no network and no real `HOME` (see [Tests](#tests)).
+
+## Agent usage & cost dashboard
+
+![Grafana dashboard: cost by model, cost by skill and subagent, tokens and cache hit, edit decisions, gate blocks](docs/img/dashboard.png)
+
+```bash
+cd observability
+read -rs P && printf 'GF_SECURITY_ADMIN_PASSWORD=%s\n' "$P" > .env && unset P && chmod 600 .env
+docker compose up -d
+open http://127.0.0.1:3000
+```
+
+Then point Claude Code at `localhost:4317` with the `env` block from [observability/README.md](observability/README.md); it works only in user settings.
+
+Two things building it taught me:
+
+- **Plain `increase()` overstates short sessions, so the panels use `increase(…[range] anchored)`.** `increase()` takes the first and last sample in the window and extrapolates outward, by up to half the sample interval at each end when a series starts or stops inside the window. A session that lives for a few 10-second export intervals gains a large share of its lifetime from that padding. In one test session it reported $0.0387 against an actual $0.0259 (+49%); the anchored range, which does not extrapolate, matched exactly. That is a single measurement: the size of the error depends on session length.
+- **`session.id` has to stay on the metrics,** even though dropping it is the usual cardinality advice. Every CLI process keeps its own cumulative counters from zero, so without the label concurrent sessions write into the same series and overwrite each other.
+
+Privacy: the collector deletes `user.id`, `user.email`, `user.account_uuid`, `user.account_id` and `organization.id` from metrics and events before anything is stored. Prompts, model responses and tool output are not exported (`OTEL_LOG_USER_PROMPTS` and the like are never set). Tool parameters, such as full Bash commands, are, which is why every port binds to 127.0.0.1 and nothing leaves the machine.
+
+## The config tool
+
 A versioned global layer for Claude Code: instructions, settings, skills and hooks that apply to every repository on a machine, kept in git and connected to `~/.claude` with symlinks.
 
 It is meant to be shared. Anything personal — your language and style preferences, memory, plugins, connectors, private skills — lives in a second, private repository (called `claude-personal` below) that this tool layers on top.
