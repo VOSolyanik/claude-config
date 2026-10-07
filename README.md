@@ -158,7 +158,7 @@ FAKE_UPSTREAM=<path to fake_anthropic.py> tests/integration.sh   # real claude a
 
 The integration test needs your own fake Anthropic API upstream, which is not part of this repository: any local HTTP stub that answers in the Messages API format, started as `python3 <stub> <port> <dir>` and saving each request body into `<dir>`; the other two suites run without it.
 
-Neither suite touches the real HOME or the network.
+Neither suite touches the real HOME or the network. GitHub Actions (`.github/workflows/tests.yml`) runs both on every pull request: the hooks on Ubuntu (Python 3.9 and 3.12) and macOS, the tool on macOS with the system bash.
 
 ## Provenance
 
