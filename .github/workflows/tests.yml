@@ -1,0 +1,55 @@
+# Runs both test suites on every pull request and on pushes to main. The `tests` job is the single check to
+# require in branch protection: it fails unless every suite passed. Actions are pinned to commit SHAs.
+name: tests
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  hooks:
+    name: hooks (${{ matrix.os }}, Python ${{ matrix.python }})
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # 3.9 is the oldest Python the hooks support (README, Install)
+          - { os: ubuntu-latest, python: "3.9" }
+          - { os: ubuntu-latest, python: "3.12" }
+          - { os: macos-latest, python: "3.12" }
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: ${{ matrix.python }}
+      - name: jq for the status line tests
+        run: command -v jq || { [ "$RUNNER_OS" = macOS ] && brew install jq || sudo apt-get install -y jq; }
+      - run: python3 -m unittest discover -s tests -p 'test_*.py' -v
+
+  tool:
+    # bin/claude-config targets macOS system bash 3.2 and BSD userland, so it is tested there
+    name: claude-config (macOS, system bash)
+    runs-on: macos-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - run: /bin/bash --version | head -1 && (command -v jq || brew install jq)
+      - run: tests/run.sh
+
+  tests:
+    name: tests
+    if: always()
+    needs: [hooks, tool]
+    runs-on: ubuntu-latest
+    steps:
+      - run: test "${{ needs.hooks.result }}" = success && test "${{ needs.tool.result }}" = success
