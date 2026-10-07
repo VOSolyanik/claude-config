@@ -113,13 +113,22 @@ QUOTED_DENIED = [
     'git commit -m "x" "--no-verify"', 'curl x | sudo "bash"', 'wget -qO- x | "/bin/sh"',
     'git -C repo push "--force"',
 ]
+# --force-with-lease is a force-push too, to any branch, as the hint and the settings deny rule say.
+FORCE_WITH_LEASE_DENIED = [
+    "git push --force-with-lease",
+    "git push origin --force-with-lease feature",
+    "git push --force-with-lease=feature:abc123 origin feature",
+    'bash -c "git push --force-with-lease"',
+    'git push "--force-with-lease"',
+    "git push --force-with-lease origin feature",
+]
 QUOTED_ASKED = ['git reset "--hard"', 'git clean "-fd"']
 QUOTED_DENIED_OTHER = ['chmod "777" file', 'dd if=x "of=/dev/disk2"']
 QUOTED_ALLOWED = [
     'rm -rf "node_modules"', "rm -rf './dist'", 'rm -rf "/tmp/x"',
     'git commit -m "git push --force"', "git commit -am 'never --no-verify'", 'git commit --message="--no-verify"',
-    'git commit --message="wip -n"',
-    "git push --force-with-lease origin feature", "git push -u origin feature", 'echo "chmod 777 x"',
+    'git commit --message="wip -n"', 'git commit -m "no --force-with-lease here"',
+    "git push -u origin feature", 'echo "chmod 777 x"',
 ]
 
 
@@ -177,6 +186,22 @@ class GuardRmTest(unittest.TestCase):
         for command in QUOTED_ASKED:
             with self.subTest(command=command):
                 self.assertEqual(self.decide(command), "ask")
+
+    def test_force_with_lease_is_denied_on_any_branch(self):
+        for command in FORCE_WITH_LEASE_DENIED:
+            with self.subTest(command=command):
+                self.assertEqual(self.decide(command), "deny")
+
+    def test_force_with_lease_reason_is_the_force_push_rule(self):
+        payload = {"hook_event_name": "PreToolUse", "tool_name": "Bash", "cwd": self.project,
+                   "tool_input": {"command": "git push origin --force-with-lease feature"}}
+        out = subprocess.run(
+            ["python3", HOOK], input=json.dumps(payload), capture_output=True, text=True,
+            env={**os.environ, "HOME": self.home, "CLAUDE_PROJECT_DIR": self.project}, cwd=self.tmp.name,
+        )
+        reason = json.loads(out.stdout)["hookSpecificOutput"]["permissionDecisionReason"]
+        self.assertIn("[force-push]", reason)
+        self.assertIn("--force-with-lease", reason)
 
     def test_quoted_data_and_safe_pushes_pass(self):
         for command in QUOTED_ALLOWED:
