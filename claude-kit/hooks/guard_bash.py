@@ -24,10 +24,9 @@ GLOB = re.compile(r"[*?[]")
 RULES = [
     ("no-verify", "deny", r"\bgit\s+(commit|push)\b[^|;&]*\s(--no-verify|-n)\b",
      "Do not skip git hooks; fix the failing pre-commit/pre-push check instead."),
-    ("force-push", "deny", r"\bgit\s+push\b[^|;&]*\s(--force(?!-with-lease)\b|-[a-zA-Z]*f[a-zA-Z]*\b|\+\S)",
+    # --force\S* also covers --force-with-lease[=<ref>], on any branch, like the settings deny rule
+    ("force-push", "deny", r"\bgit\s+push\b[^|;&]*\s(--force\S*|-[a-zA-Z]*f[a-zA-Z]*\b|\+\S)",
      "Force-push is blocked, including --force-with-lease; leave history rewrites to the owner."),
-    ("force-push-main", "deny", r"\bgit\s+push\b[^|;&]*--force-with-lease[^|;&]*\b(main|master)\b",
-     "Never rewrite main/master history."),
     ("curl-pipe-sh", "deny", r"\b(curl|wget)\b[^|]*\|\s*(sudo\s+)?(ba|z)?sh\b",
      "Download the script, inspect it, then run it explicitly."),
     ("chmod-777", "deny", r"\bchmod\s+(-R\s+)?0?777\b", "Use least-privilege modes (e.g. 755/644)."),

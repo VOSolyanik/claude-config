@@ -134,7 +134,7 @@ Put the script in `claude-kit/hooks/`, write tests first (`tests/test_<hook>.py`
 
 | Hook | Event | What it does |
 | --- | --- | --- |
-| `guard_bash.py` | PreToolUse (Bash) | denies `rm` on dangerous targets, force-push, `curl … \| sh`, skipping git hooks, disk wipes; asks before hard resets, destructive SQL, infrastructure destroy; logs blocks to `.claude/lessons/blocked.md` |
+| `guard_bash.py` | PreToolUse (Bash) | denies `rm` on dangerous targets, force-push (plain `--force-with-lease` too, on any branch), `curl … \| sh`, skipping git hooks, disk wipes; asks before hard resets, destructive SQL, infrastructure destroy; logs blocks to `.claude/lessons/blocked.md` |
 | `dep_gate.py` | PreToolUse (Bash; Edit/Write/MultiEdit on manifests) | vets packages before they are added: missing from the registry (likely hallucinated) → deny; OSV `MAL-*` → deny; typosquat of a popular package → deny; very new or barely downloaded, custom registry, registry unreachable → ask. Never answers "allow" |
 | `dep_audit.py` | PostToolUse (Bash) | after packages are added: `pnpm audit` / `npm audit` / `osv-scanner` on the lockfile and deprecated npm packages → findings back to the agent |
 | `personal_dirty.sh` | SessionStart | one sentence when the live personal clone has uncommitted changes |
