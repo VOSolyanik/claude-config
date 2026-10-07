@@ -13,6 +13,23 @@ import tempfile
 import unittest
 
 HOOK = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "claude-kit", "hooks", "guard_bash.py")
+# The fake HOME and project live outside /tmp: the guard allows rm under /tmp, so fixtures there would turn
+# denied cases (rm in $HOME, a sibling repo) into allowed ones. Linux puts tempfile under /tmp, macOS under
+# /var/folders, hence a git-ignored folder in the repo, removed when the tests finish.
+FIXTURE_BASE = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".tmp")
+TMP_ROOTS = ("/tmp", "/private/tmp")
+
+
+def under_tmp(path):
+    real = os.path.realpath(path)
+    return any(real == r or real.startswith(r + "/") for r in TMP_ROOTS + tuple(map(os.path.realpath, TMP_ROOTS)))
+
+
+def tearDownModule():
+    try:
+        os.rmdir(FIXTURE_BASE)
+    except OSError:
+        pass
 
 ALLOWED = [
     "rm -rf node_modules",
@@ -134,7 +151,11 @@ QUOTED_ALLOWED = [
 
 class GuardRmTest(unittest.TestCase):
     def setUp(self):
-        self.tmp = tempfile.TemporaryDirectory()
+        if under_tmp(FIXTURE_BASE):
+            self.skipTest(f"the repo is under /tmp ({FIXTURE_BASE}); the guard allows rm there, so the rm "
+                          "policy cannot be tested from this checkout - clone it elsewhere")
+        os.makedirs(FIXTURE_BASE, exist_ok=True)
+        self.tmp = tempfile.TemporaryDirectory(dir=FIXTURE_BASE)
         self.home = os.path.join(self.tmp.name, "home")
         self.project = os.path.join(self.home, "dev", "proj")
         os.makedirs(os.path.join(self.project, "dist"))
