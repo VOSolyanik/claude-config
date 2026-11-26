@@ -204,7 +204,7 @@ Never modify managed settings, weaken existing deny rules, or commit or push unl
 
 **Facts:**
 - **Hooks:**
-  - 33 events and 5 handler types: command, http, mcp_tool, prompt, and agent (experimental).
+  - 34 events (PreSkillShellCommand added in v2.1.332) and 5 handler types: command, http, mcp_tool, prompt, and agent (experimental).
   - Stop and SubagentStop blocks are capped at 8 in a row (`CLAUDE_CODE_STOP_HOOK_BLOCK_CAP`).
   - `permissionDecision` is `allow|deny|ask|defer`.
   - UserPromptSubmit can block a prompt or add context but cannot rewrite it.
