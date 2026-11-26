@@ -21,8 +21,9 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          # 3.9 is the oldest Python the hooks support (README, Install)
-          - { os: ubuntu-latest, python: "3.9" }
+          # 3.9 is the oldest Python the hooks support (README, Install). Pinned to 24.04: ubuntu-latest
+          # (26.04) has no 3.9 build in actions/python-versions.
+          - { os: ubuntu-24.04, python: "3.9" }
           - { os: ubuntu-latest, python: "3.12" }
           - { os: macos-latest, python: "3.12" }
     runs-on: ${{ matrix.os }}
