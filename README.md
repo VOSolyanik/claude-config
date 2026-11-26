@@ -162,6 +162,32 @@ The integration test needs your own fake Anthropic API upstream, which is not pa
 
 Neither suite touches the real HOME or the network. GitHub Actions (`.github/workflows/tests.yml`) runs both on every pull request: the hooks on Ubuntu (Python 3.9 and 3.12) and macOS, the tool on macOS with the system bash.
 
+## Evaluation
+
+**Question.** Does a process plugin ([superpowers](https://github.com/obra/superpowers): brainstorming, plans, TDD, subagent workflows) pay for itself when enforcement already lives in hooks and deny rules (`guard_bash`, `dep_gate`)?
+
+**Method.**
+- 5 tasks harvested from real fix commits: 3 from [receipt-synthesis](https://github.com/VOSolyanik/receipt-synthesis), 2 from a private repository. The harvest script ran with `--verify`, which keeps a commit only if its tests fail on the parent and pass on the fix. Those tests stay hidden from the agent and grade the run; prompts were rewritten as a user would report the symptom.
+- 2 variants (with and without the plugin) × 5 tasks × k = 3 = 30 headless runs.
+- One variable: the plugin was switched on or off per run through `--settings`. Everything else was frozen: config, CLI version, model and effort.
+
+**Result.**
+
+| | with plugin | without |
+| --- | --- | --- |
+| pass@1 | 0.867 | 0.867 |
+| pass^3 | 0.8 | 0.8 |
+| cost per success | $0.939 | $0.886 |
+| wall time | 6442 s | 5616 s (−13%) |
+
+Paired outcomes: each variant solved 2 runs the other did not; exact McNemar p = 1.0. Total spend for the 30 runs: $23.72 at list price.
+
+**Limitations.**
+- n = 5 tasks, all small bug fixes; a sample this size only detects large effects.
+- No run started a subagent in either variant, so the plugin's subagent workflows, where it should cost the most, were not exercised.
+
+**Conclusion.** On small fixes, with enforcement in hooks and deny rules, the plugin bought no measurable quality: the same pass rates, while runs without it cost 5.6% less per success and took 13% less time. That is weak evidence, not proof, and it says nothing about larger, multi-step work.
+
 ## Provenance
 
 `claude-kit/` and parts of `global/` come from an earlier research project of mine, built with the help of Claude, and were then adapted and extended here (for example, `guard_bash` was rewritten to check only the executable parts of a command). The `dep_gate` and `dep_audit` hooks (on top of the kit's shared `_common.py` helpers), the `claude-config` CLI and the observability stack were written for this setup; the early commits of the hooks and the CLI stay in the private repository this one was split from. The whole repository is licensed under MIT (see LICENSE).
