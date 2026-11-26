@@ -29,6 +29,8 @@ Two things building it taught me:
 
 Privacy: the collector deletes `user.id`, `user.email`, `user.account_uuid`, `user.account_id` and `organization.id` from metrics and events before anything is stored. Prompts, model responses and tool output are not exported (`OTEL_LOG_USER_PROMPTS` and the like are never set). Tool parameters, such as full Bash commands, are, which is why every port binds to 127.0.0.1 and nothing leaves the machine.
 
+Claude Code's own telemetry to Anthropic is separate from this stack and stays on: the base settings do not set `DISABLE_TELEMETRY`. That variable also turns off feature-flag fetching and the features that need it; `/status` shows which ones are off.
+
 ## The config tool
 
 A versioned global layer for Claude Code: instructions, settings, skills and hooks that apply to every repository on a machine, kept in git and connected to `~/.claude` with symlinks.
