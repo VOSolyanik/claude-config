@@ -1,5 +1,7 @@
 # claude-config
 
+[![tests](https://github.com/VOSolyanik/claude-config/actions/workflows/tests.yml/badge.svg?branch=main)](https://github.com/VOSolyanik/claude-config/actions/workflows/tests.yml)
+
 My global Claude Code setup, in two layers: this shareable repository (instructions, permission rules, hooks, a skill, telemetry) and a private one with personal preferences and memory, merged on top by one bash script.
 
 - **Guard hooks.** `guard_bash.py` reads each Bash command the way the shell would (after unquoting, only the parts that actually run) and denies `rm` outside the project and `/tmp`, force-push, `curl … | sh` and skipped git hooks. Deny rules in `settings.base.json` are the hard boundary behind it.
