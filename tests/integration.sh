@@ -6,6 +6,7 @@
 # First run by the owner on 2026-10-01, Claude Code 2.1.286:
 #   A: CLAUDE.md, skill and rule found in both the copy and the link run (symlinks work).
 #   B: project-level enabledPlugins:false switches off a user-level plugin.
+# Re-run 2026-11-26, Claude Code 2.1.332: same results for A and B.
 # Re-run after Claude Code updates that touch config loading, and record the version.
 #
 # What it answers:
